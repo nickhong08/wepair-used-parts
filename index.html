@@ -373,9 +373,9 @@
     <div class="modal-h"><span id="edit-modal-title">주문 상세</span><button onclick="closeEditModal()">✕</button></div>
     <div class="modal-b" id="edit-modal-body"></div>
     <div class="modal-f">
-      <button class="btn ghost" onclick="closeEditModal()">닫기</button>
-      <button class="btn ghost" onclick="printFromModal()">🖨 견적서</button>
+      <button class="btn ghost" onclick="printFromModal()">🖨 견적서 출력</button>
       <button class="btn" onclick="saveEditModal()">저장</button>
+      <button class="btn gray" onclick="closeEditModal()">닫기</button>
     </div>
   </div>
 </div>
@@ -1061,7 +1061,7 @@ async function generateInvoice(){
         <td class="c">${idx+1}</td>
         <td class="c" style="white-space:nowrap">${o.date}</td>
         <td class="c" style="white-space:nowrap">${o.plate||''}</td>
-        <td style="white-space:nowrap">${o.model||o.brand||''}</td>
+        <td style="white-space:nowrap">${[o.brand,o.model].filter(Boolean).join(' ')}</td>
         <td style="font-size:12px">${itemsSummary}</td>
         <td class="r">${fmtN(o.sub||0)}</td>
         <td class="r">${fmtN(o.vat||0)}</td>
@@ -1200,6 +1200,14 @@ function lastDay(ym){ const d=new Date(ym+'-01'); d.setMonth(d.getMonth()+1); d.
 function fmt(n){ return Number(n||0).toLocaleString('ko-KR')+'원'; }
 function fmtN(n){ return Number(n||0).toLocaleString('ko-KR'); }
 function setText(id,v){ const el=document.getElementById(id); if(el) el.textContent=v; }
+
+// ──────────── ESC로 모달 닫기 ────────────
+document.addEventListener('keydown', function(e){
+  if(e.key!=='Escape') return;
+  if(document.getElementById('edit-modal').classList.contains('open'))        closeEditModal();
+  else if(document.getElementById('client-edit-modal').classList.contains('open')) closeClientEdit();
+  else if(document.getElementById('client-modal').classList.contains('open'))  closeClientModal();
+});
 
 // ──────────── 인증 ────────────
 const AUTH_PW    = '0000';
