@@ -120,6 +120,18 @@
   .bill-doc-grandtotal td{background:#1f3a5f;color:#fff;font-weight:800;font-size:13px}
   .page-break{page-break-before:always}
 
+  /* ── 모바일 대응 ── */
+  @media (max-width:760px){
+    main{padding:14px}
+    .g2,.g3,.g4{grid-template-columns:1fr!important}
+    .kpi{grid-template-columns:1fr 1fr}
+    nav{overflow-x:auto}
+    nav button{padding:12px 12px;white-space:nowrap}
+    .card{overflow-x:auto!important}
+    .totals,.totals table{width:100%}
+    .search-bar .sf{min-width:120px}
+  }
+
   /* ── 잠금 화면 ── */
   #lock-screen{position:fixed;inset:0;background:#0a0a0a;display:flex;align-items:center;justify-content:center;z-index:9999;flex-direction:column;gap:14px}
   #lock-screen .lock-logo{font-size:13px;font-weight:600;color:#9aa6b4;letter-spacing:1px;margin-bottom:6px}
@@ -176,11 +188,12 @@
         </select>
       </div>
     </div>
-    <div class="grid g3">
+    <div class="grid g4">
       <div><label>거래처 (공업사)</label>
         <select id="o-client" onchange="onClientSelect()"><option value="">— 선택 —</option></select>
       </div>
       <div><label>업체 주소</label><input id="o-client-addr" readonly style="background:#f0f3f7;color:var(--muted)"></div>
+      <div><label>연락처</label><input id="o-client-tel" readonly style="background:#f0f3f7;color:var(--muted)"></div>
       <div style="display:flex;align-items:flex-end">
         <button class="btn ghost sm" onclick="openClientModal()">＋ 새 거래처 등록</button>
       </div>
@@ -260,6 +273,7 @@
     </div>
     <button class="btn sm ghost" onclick="clearFilters()">초기화</button>
   </div>
+  <div id="list-summary" class="noprint" style="font-size:13px;color:var(--navy);margin-bottom:10px;font-weight:700"></div>
   <div class="card" style="padding:0;overflow:hidden">
     <table>
       <thead>
@@ -381,6 +395,24 @@
   </div>
 </div>
 
+<!-- ══════════════ 거래처 수정 모달 ══════════════ -->
+<div class="modal-bg" id="client-edit-modal">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-h"><span>거래처 수정</span><button onclick="closeClientEdit()">✕</button></div>
+    <div class="modal-b">
+      <div class="grid" style="gap:12px">
+        <div><label>업체명 *</label><input id="ec-name"></div>
+        <div><label>주소</label><input id="ec-addr"></div>
+        <div><label>담당자 연락처</label><input id="ec-tel"></div>
+      </div>
+    </div>
+    <div class="modal-f">
+      <button class="btn ghost" onclick="closeClientEdit()">취소</button>
+      <button class="btn" onclick="saveClientEdit()">저장</button>
+    </div>
+  </div>
+</div>
+
 <!-- ══════════════ 로딩 오버레이 ══════════════ -->
 <div id="loading-overlay" style="display:none;position:fixed;inset:0;background:#0006;z-index:9999;align-items:center;justify-content:center;flex-direction:column;gap:12px;color:#fff">
   <div style="width:36px;height:36px;border:4px solid #fff4;border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite"></div>
@@ -463,20 +495,19 @@ async function deleteClientAPI(id) {
 // ──────────── 견적번호 ────────────
 async function genId(){
   const d = new Date().toISOString().slice(0,10).replace(/-/g,'');
-  const k = 'wp_used_seq_'+d;
-  // 당일 기존 주문에서 최대 시퀀스 추출
-  let maxSeq = parseInt(localStorage.getItem(k)||'0');
+  // 저장된 주문만 기준으로 다음 번호 계산 → 새로고침해도 번호 유지, 저장할 때만 올라감
+  let maxSeq = 0;
   try {
     const orders = await getOrders();
-    orders.filter(o=>o.id && o.id.includes('WP-U-'+d)).forEach(o=>{
-      const parts = o.id.split('-');
-      const seq = parseInt(parts[parts.length-1]||'0');
-      if(seq > maxSeq) maxSeq = seq;
+    orders.forEach(o=>{
+      const oid = String(o.id||'');
+      if(oid.includes('WP-U-'+d)){
+        const seq = parseInt(oid.split('-').pop()||'0');
+        if(seq > maxSeq) maxSeq = seq;
+      }
     });
   } catch(_){}
-  const n = maxSeq + 1;
-  localStorage.setItem(k, n);
-  return 'WP-U-'+d+'-'+String(n).padStart(3,'0');
+  return 'WP-U-'+d+'-'+String(maxSeq+1).padStart(3,'0');
 }
 
 // ──────────── 탭 ────────────
@@ -504,6 +535,7 @@ async function initOrder(){
   document.getElementById('o-status').value = '0';
   document.getElementById('o-client').value = '';
   document.getElementById('o-client-addr').value = '';
+  document.getElementById('o-client-tel').value = '';
   document.getElementById('o-plate').value = '';
   document.getElementById('o-vin').value = '';
   document.getElementById('o-brand').value = '';
@@ -527,8 +559,11 @@ async function refreshClientDropdown(){
 async function onClientSelect(){
   try {
     const clients = await getClients();
-    const c = clients.find(x=>x.id===document.getElementById('o-client').value);
-    document.getElementById('o-client-addr').value = c ? c.addr : '';
+    const v = document.getElementById('o-client').value;
+    const c = clients.find(x=>String(x.id)===String(v));
+    document.getElementById('o-client-addr').value = c ? (c.addr||'') : '';
+    const telEl = document.getElementById('o-client-tel');
+    if(telEl) telEl.value = c ? (c.tel||'') : '';
   } catch(_){}
 }
 
@@ -617,7 +652,10 @@ async function renderList(){
     if(fT && o.date>fT) return false;
     if(fS!=='' && String(o.status)!==fS) return false;
     return true;
-  }).sort((a,b)=>b.date.localeCompare(a.date)||b.id.localeCompare(a.id));
+  }).sort((a,b)=>String(b.date).localeCompare(String(a.date))||String(b.id).localeCompare(String(a.id)));
+
+  const sumTotal = filtered.reduce((a,o)=>a+(o.total||0),0);
+  setText('list-summary', `총 ${filtered.length}건 · 합계 ${fmt(sumTotal)}`);
 
   const tb=document.getElementById('list-body');
   const empty=document.getElementById('list-empty');
@@ -665,7 +703,7 @@ async function openEditModal(id){
   modalRows=JSON.parse(JSON.stringify(order.items||[]));
   document.getElementById('edit-modal-title').textContent='주문 상세 — '+id;
   let clients=[]; try { clients = await getClients(); } catch(_){}
-  const cOpts=clients.map(c=>`<option value="${c.id}" ${c.id===order.clientId?'selected':''}>${c.name}</option>`).join('');
+  const cOpts=clients.map(c=>`<option value="${c.id}" ${String(c.id)===String(order.clientId)?'selected':''}>${c.name}</option>`).join('');
   document.getElementById('edit-modal-body').innerHTML=`
     <div class="grid g3" style="margin-bottom:12px">
       <div><label>견적번호</label><input id="em-id" value="${order.id}" readonly style="background:#f0f3f7;color:var(--muted)"></div>
@@ -737,7 +775,7 @@ async function saveEditModal(){
   const o = orders.find(x=>x.id===modalOrderId); if(!o) return;
   let clients=[]; try { clients = await getClients(); } catch(_){}
   const cid=document.getElementById('em-client').value;
-  const client=clients.find(c=>c.id===cid)||{name:'',addr:''};
+  const client=clients.find(c=>String(c.id)===String(cid))||{name:'',addr:''};
   const sub=modalRows.reduce((a,r)=>a+(r.qty||1)*(r.price||0),0);
   const vat=Math.round(sub*.1);
   const updated = Object.assign({}, o, {
@@ -844,7 +882,7 @@ async function renderBilling(){
   billFiltered = allOrders.filter(o=>{
     if(fF && o.date<fF) return false;
     if(fT && o.date>fT) return false;
-    if(fC && o.clientId!==fC) return false;
+    if(fC && String(o.clientId)!==String(fC)) return false;
     if(fS!=='' && String(o.status)!==fS) return false;
     return true;
   }).sort((a,b)=>a.date.localeCompare(b.date)||a.id.localeCompare(b.id));
@@ -1036,11 +1074,14 @@ async function renderClients(){
   if(!clients.length){ empty.style.display=''; return; }
   empty.style.display='none';
   clients.forEach(c=>{
-    const cnt=orders.filter(o=>o.clientId===c.id).length;
+    const cnt=orders.filter(o=>String(o.clientId)===String(c.id)).length;
     const tr=document.createElement('tr');
     tr.innerHTML=`<td><b>${c.name}</b></td><td>${c.addr||''}</td>
       <td class="c">${c.tel||''}</td><td class="c">${cnt}건</td>
-      <td class="c noprint"><button class="btn red sm" onclick="deleteClient('${c.id}')">삭제</button></td>`;
+      <td class="c noprint" style="white-space:nowrap">
+        <button class="btn ghost sm" onclick="openClientEdit('${c.id}')">수정</button>
+        <button class="btn red sm" onclick="deleteClient('${c.id}')">삭제</button>
+      </td>`;
     tb.appendChild(tr);
   });
 }
@@ -1048,7 +1089,7 @@ async function renderClients(){
 async function addClient(){
   const name=document.getElementById('nc-name').value.trim();
   if(!name){ alert('업체명을 입력해주세요.'); return; }
-  const c={id:Date.now().toString(),name,addr:document.getElementById('nc-addr').value.trim(),tel:document.getElementById('nc-tel').value.trim()};
+  const c={id:'C'+Date.now(),name,addr:document.getElementById('nc-addr').value.trim(),tel:document.getElementById('nc-tel').value.trim()};
   await withLoading('등록 중...', () => saveClientAPI(c));
   document.getElementById('nc-name').value=''; document.getElementById('nc-addr').value=''; document.getElementById('nc-tel').value='';
   const msg=document.getElementById('client-msg'); msg.textContent='✓ '+name+' 등록 완료';
@@ -1070,11 +1111,35 @@ function closeClientModal(){ document.getElementById('client-modal').classList.r
 async function addClientFromModal(){
   const name=document.getElementById('mc-name').value.trim();
   if(!name){ alert('업체명을 입력해주세요.'); return; }
-  const c={id:Date.now().toString(),name,addr:document.getElementById('mc-addr').value.trim(),tel:document.getElementById('mc-tel').value.trim()};
+  const c={id:'C'+Date.now(),name,addr:document.getElementById('mc-addr').value.trim(),tel:document.getElementById('mc-tel').value.trim()};
   await withLoading('등록 중...', () => saveClientAPI(c));
   await refreshClientDropdown();
   document.getElementById('o-client').value=c.id; onClientSelect();
   closeClientModal();
+}
+
+// ──────────── 거래처 수정 ────────────
+let editingClientId = null;
+async function openClientEdit(id){
+  let clients=[]; try { clients = await getClients(); } catch(_){ return; }
+  const c = clients.find(x=>String(x.id)===String(id));
+  if(!c){ alert('거래처를 찾을 수 없습니다.'); return; }
+  editingClientId = c.id;
+  document.getElementById('ec-name').value = c.name||'';
+  document.getElementById('ec-addr').value = c.addr||'';
+  document.getElementById('ec-tel').value  = c.tel||'';
+  document.getElementById('client-edit-modal').classList.add('open');
+}
+function closeClientEdit(){ document.getElementById('client-edit-modal').classList.remove('open'); editingClientId=null; }
+async function saveClientEdit(){
+  const name=document.getElementById('ec-name').value.trim();
+  if(!name){ alert('업체명을 입력해주세요.'); return; }
+  const c={ id:editingClientId, name,
+            addr:document.getElementById('ec-addr').value.trim(),
+            tel:document.getElementById('ec-tel').value.trim() };
+  await withLoading('저장 중...', () => saveClientAPI(c));
+  closeClientEdit();
+  renderClients(); refreshClientDropdown();
 }
 
 // ──────────── 유틸 ────────────
