@@ -119,9 +119,30 @@
   .bill-doc-subtotal td{background:#f0f3f7;font-weight:700}
   .bill-doc-grandtotal td{background:#1f3a5f;color:#fff;font-weight:800;font-size:13px}
   .page-break{page-break-before:always}
+
+  /* ── 잠금 화면 ── */
+  #lock-screen{position:fixed;inset:0;background:#0a0a0a;display:flex;align-items:center;justify-content:center;z-index:9999;flex-direction:column;gap:14px}
+  #lock-screen .lock-logo{font-size:13px;font-weight:600;color:#9aa6b4;letter-spacing:1px;margin-bottom:6px}
+  #lock-screen h2{color:#e8edf3;font-size:20px;font-weight:700;margin:0}
+  #lock-screen p{color:#7a8699;font-size:13px;margin:0}
+  #lock-screen input{width:260px;text-align:center;padding:13px;border-radius:8px;border:1px solid #2a2a2a;background:#161616;color:#fff;font-size:20px;letter-spacing:8px;outline:none;transition:border .15s}
+  #lock-screen input:focus{border-color:#2c6ecb}
+  #lock-screen button{width:260px;padding:13px;border-radius:8px;background:#2c6ecb;color:#fff;border:none;font-size:14px;font-weight:600;cursor:pointer;transition:background .15s}
+  #lock-screen button:hover{background:#1f5ab8}
+  #lock-err{color:#d64545;font-size:13px;min-height:18px;text-align:center}
 </style>
 </head>
 <body>
+
+<div id="lock-screen">
+  <div class="lock-logo">WEPAIR</div>
+  <h2>중고부품 운영</h2>
+  <p>접근 비밀번호를 입력하세요</p>
+  <input id="lock-pw" type="password" placeholder="••••" maxlength="20"
+         onkeydown="if(event.key==='Enter')tryUnlock()">
+  <div id="lock-err"></div>
+  <button onclick="tryUnlock()">확인</button>
+</div>
 
 <header>
   <h1>위페어 중고부품 운영</h1>
@@ -542,8 +563,10 @@ function calcTotals(){
 }
 
 function getOrderFromForm(){
-  const cid = document.getElementById('o-client').value;
-  const client = loadClients().find(c=>c.id===cid)||{name:'',addr:''};
+  const sel = document.getElementById('o-client');
+  const cid = sel.value;
+  const client = { name: cid ? sel.options[sel.selectedIndex].text : '',
+                   addr: document.getElementById('o-client-addr').value };
   const sub = rows.reduce((a,r)=>a+(r.qty||1)*(r.price||0),0);
   const vat = Math.round(sub*.1);
   return {
@@ -875,7 +898,7 @@ function deselectAllBill(){ billSelected.clear(); renderBilling(); }
 
 function updateBillBar(){
   const n = billSelected.size;
-  const selOrders = loadOrders().filter(o=>billSelected.has(o.id));
+  const selOrders = billFiltered.filter(o=>billSelected.has(o.id));
   const total = selOrders.reduce((a,o)=>a+(o.total||0),0);
   const bar=document.getElementById('bill-sel-bar');
   const info=document.getElementById('bill-sel-info');
@@ -1061,8 +1084,32 @@ function fmt(n){ return Number(n||0).toLocaleString('ko-KR')+'원'; }
 function fmtN(n){ return Number(n||0).toLocaleString('ko-KR'); }
 function setText(id,v){ const el=document.getElementById(id); if(el) el.textContent=v; }
 
+// ──────────── 인증 ────────────
+const AUTH_PW    = '0000';
+const AUTH_HOURS = 9;
+const AUTH_KEY   = 'wp_used_auth';
+
+function isAuthed() {
+  const t = localStorage.getItem(AUTH_KEY);
+  if (!t) return false;
+  return (Date.now() - Number(t)) < AUTH_HOURS * 3600 * 1000;
+}
+
+function tryUnlock() {
+  const pw = document.getElementById('lock-pw').value;
+  if (pw === AUTH_PW) {
+    localStorage.setItem(AUTH_KEY, Date.now().toString());
+    document.getElementById('lock-screen').style.display = 'none';
+    startApp();
+  } else {
+    document.getElementById('lock-err').textContent = '비밀번호가 올바르지 않습니다.';
+    document.getElementById('lock-pw').value = '';
+    document.getElementById('lock-pw').focus();
+  }
+}
+
 // ──────────── 시작 ────────────
-(async () => {
+async function startApp() {
   if(!API_URL){
     document.querySelector('header').insertAdjacentHTML('afterend',
       `<div style="background:#d64545;color:#fff;padding:10px 22px;font-size:13px;font-weight:600;text-align:center">
@@ -1074,7 +1121,14 @@ function setText(id,v){ const el=document.getElementById(id); if(el) el.textCont
     await Promise.all([getOrders(), getClients()]);
   });
   await initOrder();
-})();
+}
+
+if (isAuthed()) {
+  document.getElementById('lock-screen').style.display = 'none';
+  startApp();
+} else {
+  document.getElementById('lock-pw').focus();
+}
 </script>
 </body>
 </html>
