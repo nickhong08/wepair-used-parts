@@ -206,13 +206,13 @@
       <div><label>차량번호</label><input id="o-plate" placeholder="예) 15고0420"></div>
       <div><label>차대번호</label><input id="o-vin" placeholder="예) WDDUF3DB7GA247832"></div>
       <div><label>브랜드</label>
-        <select id="o-brand">
-          <option value="">— 선택 —</option>
-          <option>MB (벤츠)</option><option>BMW</option><option>AUDI</option><option>VW</option>
-          <option>LEXUS</option><option>TOYOTA</option><option>HONDA</option><option>NISSAN</option>
-          <option>PORSCHE</option><option>VOLVO</option><option>JAGUAR</option><option>LANDROVER</option>
-          <option>TESLA</option><option>기타</option>
-        </select>
+        <input id="o-brand" list="brand-list" placeholder="선택 또는 직접 입력" autocomplete="off">
+        <datalist id="brand-list">
+          <option value="MB (벤츠)"></option><option value="BMW"></option><option value="AUDI"></option><option value="VW"></option>
+          <option value="LEXUS"></option><option value="TOYOTA"></option><option value="HONDA"></option><option value="NISSAN"></option>
+          <option value="PORSCHE"></option><option value="VOLVO"></option><option value="JAGUAR"></option><option value="LANDROVER"></option>
+          <option value="TESLA"></option><option value="현대"></option><option value="기아"></option><option value="제네시스"></option><option value="기타"></option>
+        </datalist>
       </div>
       <div><label>차량정보 (차종)</label><input id="o-model" placeholder="예) S350 BlueTEC 4MATIC"></div>
     </div>
@@ -226,7 +226,7 @@
           <th style="width:36px">No</th><th>품명</th><th style="width:60px">수량</th>
           <th style="width:130px">납품단가<br><span style="font-weight:400;font-size:11px">(VAT별도)</span></th>
           <th style="width:130px">총 납품가<br><span style="font-weight:400;font-size:11px">(VAT별도)</span></th>
-          <th style="width:40px" class="noprint"></th>
+          <th style="width:112px" class="noprint">순서/삭제</th>
         </tr>
       </thead>
       <tbody id="items-body"></tbody>
@@ -347,15 +347,18 @@
     <h2>새 거래처 등록</h2>
     <div class="grid g3" style="margin-bottom:12px">
       <div><label>업체명 *</label><input id="nc-name" placeholder="예) 지에스리스토어"></div>
-      <div><label>주소</label><input id="nc-addr" placeholder="예) 경기도 파주시..."></div>
+      <div><label>사업자번호</label><input id="nc-biz" placeholder="000-00-00000"></div>
       <div><label>담당자 연락처</label><input id="nc-tel" placeholder="010-0000-0000"></div>
+      <div><label>주소</label><input id="nc-addr" placeholder="예) 경기도 파주시..."></div>
+      <div><label>이메일</label><input id="nc-email" placeholder="example@email.com"></div>
+      <div><label>은행/계좌번호</label><input id="nc-bank" placeholder="하나은행 000-000000-00000"></div>
     </div>
     <button class="btn" onclick="addClient()">＋ 등록</button>
     <span id="client-msg" style="font-size:12px;color:var(--ok);margin-left:10px"></span>
   </div>
   <div class="card" style="padding:0;overflow:hidden">
     <table>
-      <thead><tr><th>업체명</th><th>주소</th><th>연락처</th><th>주문건수</th><th class="noprint">관리</th></tr></thead>
+      <thead><tr><th>업체명</th><th>사업자번호</th><th>주소</th><th>연락처</th><th>이메일</th><th>은행/계좌</th><th>주문건수</th><th class="noprint">관리</th></tr></thead>
       <tbody id="clients-body"></tbody>
     </table>
     <div id="clients-empty" class="empty" style="display:none">등록된 거래처가 없습니다.</div>
@@ -384,8 +387,11 @@
     <div class="modal-b">
       <div class="grid" style="gap:12px">
         <div><label>업체명 *</label><input id="mc-name"></div>
+        <div><label>사업자번호</label><input id="mc-biz" placeholder="000-00-00000"></div>
+        <div><label>담당자 연락처</label><input id="mc-tel" placeholder="010-0000-0000"></div>
         <div><label>주소</label><input id="mc-addr"></div>
-        <div><label>담당자 연락처</label><input id="mc-tel"></div>
+        <div><label>이메일</label><input id="mc-email" placeholder="example@email.com"></div>
+        <div><label>은행/계좌번호</label><input id="mc-bank" placeholder="하나은행 000-000000-00000"></div>
       </div>
     </div>
     <div class="modal-f">
@@ -402,8 +408,11 @@
     <div class="modal-b">
       <div class="grid" style="gap:12px">
         <div><label>업체명 *</label><input id="ec-name"></div>
+        <div><label>사업자번호</label><input id="ec-biz" placeholder="000-00-00000"></div>
+        <div><label>담당자 연락처</label><input id="ec-tel" placeholder="010-0000-0000"></div>
         <div><label>주소</label><input id="ec-addr"></div>
-        <div><label>담당자 연락처</label><input id="ec-tel"></div>
+        <div><label>이메일</label><input id="ec-email" placeholder="example@email.com"></div>
+        <div><label>은행/계좌번호</label><input id="ec-bank" placeholder="하나은행 000-000000-00000"></div>
       </div>
     </div>
     <div class="modal-f">
@@ -569,6 +578,9 @@ async function onClientSelect(){
 
 function addRow(){ rows.push({name:'',qty:1,price:0}); renderRows(); }
 function removeRow(i){ rows.splice(i,1); renderRows(); }
+function moveRow(i,dir){ const j=i+dir; if(j<0||j>=rows.length) return; [rows[i],rows[j]]=[rows[j],rows[i]]; renderRows(); }
+function onPriceInput(el,i){ const d=el.value.replace(/[^0-9]/g,''); const n=d?parseInt(d,10):0; rows[i].price=n; el.value=d?n.toLocaleString('ko-KR'):''; calcTotals(); }
+function focusNextItemName(i){ if(i>=rows.length-1) addRow(); const tb=document.getElementById('items-body'); const next=tb.querySelectorAll('tr')[i+1]; if(next){ const inp=next.querySelector('input'); if(inp) inp.focus(); } }
 
 function renderRows(){
   const tb = document.getElementById('items-body');
@@ -577,11 +589,15 @@ function renderRows(){
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td class="c">${i+1}</td>
-      <td><input value="${r.name||''}" oninput="rows[${i}].name=this.value" placeholder="부품명"></td>
+      <td><input value="${r.name||''}" oninput="rows[${i}].name=this.value" placeholder="부품명"
+            onkeydown="if(event.key==='Enter'){event.preventDefault();focusNextItemName(${i});}"></td>
       <td><input class="num" type="number" min="1" value="${r.qty||1}" oninput="rows[${i}].qty=+this.value||1;calcTotals()"></td>
-      <td><input class="num" type="number" min="0" value="${r.price||''}" placeholder="0" oninput="rows[${i}].price=+this.value||0;calcTotals()"></td>
+      <td><input class="num" inputmode="numeric" value="${r.price?fmtN(r.price):''}" placeholder="0" oninput="onPriceInput(this,${i})"></td>
       <td class="r" id="rt-${i}">${fmt((r.qty||1)*(r.price||0))}</td>
-      <td class="c noprint"><button class="btn gray sm" onclick="removeRow(${i})">✕</button></td>`;
+      <td class="c noprint" style="white-space:nowrap">
+        <button class="btn gray sm" onclick="moveRow(${i},-1)" title="위로">▲</button>
+        <button class="btn gray sm" onclick="moveRow(${i},1)" title="아래로">▼</button>
+        <button class="btn gray sm" onclick="removeRow(${i})" title="삭제">✕</button></td>`;
     tb.appendChild(tr);
   });
   calcTotals();
@@ -719,12 +735,12 @@ async function openEditModal(id){
     <div class="grid g4" style="margin-bottom:12px">
       <div><label>차량번호</label><input id="em-plate" value="${order.plate||''}"></div>
       <div><label>차대번호</label><input id="em-vin" value="${order.vin||''}"></div>
-      <div><label>브랜드</label><input id="em-brand" value="${order.brand||''}"></div>
+      <div><label>브랜드</label><input id="em-brand" list="brand-list" autocomplete="off" value="${order.brand||''}"></div>
       <div><label>차종</label><input id="em-model" value="${order.model||''}"></div>
     </div>
     <table style="margin-bottom:8px">
       <thead><tr><th style="width:36px">No</th><th>품명</th><th style="width:60px">수량</th>
-        <th style="width:120px">납품단가</th><th style="width:120px">총납품가</th><th style="width:36px"></th></tr></thead>
+        <th style="width:120px">납품단가</th><th style="width:120px">총납품가</th><th style="width:96px">순서/삭제</th></tr></thead>
       <tbody id="em-rows"></tbody>
     </table>
     <button class="btn ghost sm" onclick="addModalRow()">＋ 행 추가</button>
@@ -747,11 +763,15 @@ function renderModalRows(){
     const tr=document.createElement('tr');
     tr.innerHTML=`
       <td class="c">${i+1}</td>
-      <td><input value="${r.name||''}" oninput="modalRows[${i}].name=this.value"></td>
+      <td><input value="${r.name||''}" oninput="modalRows[${i}].name=this.value"
+            onkeydown="if(event.key==='Enter'){event.preventDefault();focusNextModalItemName(${i});}"></td>
       <td><input class="num" type="number" min="1" value="${r.qty||1}" oninput="modalRows[${i}].qty=+this.value||1;calcModalTotals()"></td>
-      <td><input class="num" type="number" min="0" value="${r.price||0}" oninput="modalRows[${i}].price=+this.value||0;calcModalTotals()"></td>
+      <td><input class="num" inputmode="numeric" value="${r.price?fmtN(r.price):''}" placeholder="0" oninput="onModalPriceInput(this,${i})"></td>
       <td class="r" id="mr-${i}">${fmt((r.qty||1)*(r.price||0))}</td>
-      <td class="c"><button class="btn gray sm" onclick="removeModalRow(${i})">✕</button></td>`;
+      <td class="c" style="white-space:nowrap">
+        <button class="btn gray sm" onclick="moveModalRow(${i},-1)" title="위로">▲</button>
+        <button class="btn gray sm" onclick="moveModalRow(${i},1)" title="아래로">▼</button>
+        <button class="btn gray sm" onclick="removeModalRow(${i})" title="삭제">✕</button></td>`;
     tb.appendChild(tr);
   });
   calcModalTotals();
@@ -759,6 +779,9 @@ function renderModalRows(){
 
 function addModalRow(){ modalRows.push({name:'',qty:1,price:0}); renderModalRows(); }
 function removeModalRow(i){ modalRows.splice(i,1); renderModalRows(); }
+function moveModalRow(i,dir){ const j=i+dir; if(j<0||j>=modalRows.length) return; [modalRows[i],modalRows[j]]=[modalRows[j],modalRows[i]]; renderModalRows(); }
+function onModalPriceInput(el,i){ const d=el.value.replace(/[^0-9]/g,''); const n=d?parseInt(d,10):0; modalRows[i].price=n; el.value=d?n.toLocaleString('ko-KR'):''; calcModalTotals(); }
+function focusNextModalItemName(i){ if(i>=modalRows.length-1) addModalRow(); const tb=document.getElementById('em-rows'); const next=tb.querySelectorAll('tr')[i+1]; if(next){ const inp=next.querySelector('input'); if(inp) inp.focus(); } }
 
 function calcModalTotals(){
   let sub=0;
@@ -1076,8 +1099,8 @@ async function renderClients(){
   clients.forEach(c=>{
     const cnt=orders.filter(o=>String(o.clientId)===String(c.id)).length;
     const tr=document.createElement('tr');
-    tr.innerHTML=`<td><b>${c.name}</b></td><td>${c.addr||''}</td>
-      <td class="c">${c.tel||''}</td><td class="c">${cnt}건</td>
+    tr.innerHTML=`<td><b>${c.name}</b></td><td class="c">${c.biz||''}</td><td>${c.addr||''}</td>
+      <td class="c">${c.tel||''}</td><td>${c.email||''}</td><td>${c.bank||''}</td><td class="c">${cnt}건</td>
       <td class="c noprint" style="white-space:nowrap">
         <button class="btn ghost sm" onclick="openClientEdit('${c.id}')">수정</button>
         <button class="btn red sm" onclick="deleteClient('${c.id}')">삭제</button>
@@ -1089,9 +1112,14 @@ async function renderClients(){
 async function addClient(){
   const name=document.getElementById('nc-name').value.trim();
   if(!name){ alert('업체명을 입력해주세요.'); return; }
-  const c={id:'C'+Date.now(),name,addr:document.getElementById('nc-addr').value.trim(),tel:document.getElementById('nc-tel').value.trim()};
+  const c={id:'C'+Date.now(),name,
+    biz:document.getElementById('nc-biz').value.trim(),
+    addr:document.getElementById('nc-addr').value.trim(),
+    tel:document.getElementById('nc-tel').value.trim(),
+    email:document.getElementById('nc-email').value.trim(),
+    bank:document.getElementById('nc-bank').value.trim()};
   await withLoading('등록 중...', () => saveClientAPI(c));
-  document.getElementById('nc-name').value=''; document.getElementById('nc-addr').value=''; document.getElementById('nc-tel').value='';
+  ['nc-name','nc-biz','nc-addr','nc-tel','nc-email','nc-bank'].forEach(id=>document.getElementById(id).value='');
   const msg=document.getElementById('client-msg'); msg.textContent='✓ '+name+' 등록 완료';
   setTimeout(()=>msg.textContent='',2500);
   renderClients(); refreshClientDropdown();
@@ -1104,14 +1132,19 @@ async function deleteClient(id){
 }
 
 function openClientModal(){
-  ['mc-name','mc-addr','mc-tel'].forEach(id=>document.getElementById(id).value='');
+  ['mc-name','mc-biz','mc-addr','mc-tel','mc-email','mc-bank'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('client-modal').classList.add('open');
 }
 function closeClientModal(){ document.getElementById('client-modal').classList.remove('open'); }
 async function addClientFromModal(){
   const name=document.getElementById('mc-name').value.trim();
   if(!name){ alert('업체명을 입력해주세요.'); return; }
-  const c={id:'C'+Date.now(),name,addr:document.getElementById('mc-addr').value.trim(),tel:document.getElementById('mc-tel').value.trim()};
+  const c={id:'C'+Date.now(),name,
+    biz:document.getElementById('mc-biz').value.trim(),
+    addr:document.getElementById('mc-addr').value.trim(),
+    tel:document.getElementById('mc-tel').value.trim(),
+    email:document.getElementById('mc-email').value.trim(),
+    bank:document.getElementById('mc-bank').value.trim()};
   await withLoading('등록 중...', () => saveClientAPI(c));
   await refreshClientDropdown();
   document.getElementById('o-client').value=c.id; onClientSelect();
@@ -1126,8 +1159,11 @@ async function openClientEdit(id){
   if(!c){ alert('거래처를 찾을 수 없습니다.'); return; }
   editingClientId = c.id;
   document.getElementById('ec-name').value = c.name||'';
+  document.getElementById('ec-biz').value  = c.biz||'';
   document.getElementById('ec-addr').value = c.addr||'';
   document.getElementById('ec-tel').value  = c.tel||'';
+  document.getElementById('ec-email').value= c.email||'';
+  document.getElementById('ec-bank').value = c.bank||'';
   document.getElementById('client-edit-modal').classList.add('open');
 }
 function closeClientEdit(){ document.getElementById('client-edit-modal').classList.remove('open'); editingClientId=null; }
@@ -1135,8 +1171,11 @@ async function saveClientEdit(){
   const name=document.getElementById('ec-name').value.trim();
   if(!name){ alert('업체명을 입력해주세요.'); return; }
   const c={ id:editingClientId, name,
+            biz:document.getElementById('ec-biz').value.trim(),
             addr:document.getElementById('ec-addr').value.trim(),
-            tel:document.getElementById('ec-tel').value.trim() };
+            tel:document.getElementById('ec-tel').value.trim(),
+            email:document.getElementById('ec-email').value.trim(),
+            bank:document.getElementById('ec-bank').value.trim() };
   await withLoading('저장 중...', () => saveClientAPI(c));
   closeClientEdit();
   renderClients(); refreshClientDropdown();
