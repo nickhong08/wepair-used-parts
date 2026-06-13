@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>부품 견적서 - 위페어</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Malgun Gothic', '맑은 고딕', sans-serif;
+      font-size: 12px;
+      color: #1a1a1a;
+      background: #fff;
+    }
+    .page {
+      width: 794px;
+      min-height: 1123px;
+      margin: 0 auto;
+      padding: 48px 48px 40px;
+    }
+
+    /* 제목 */
+    .title {
+      text-align: center;
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: 10px;
+      margin-bottom: 28px;
+    }
+
+    /* 상단 정보 영역 */
+    .header-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+    .meta-table, .supplier-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .meta-table td, .supplier-table td {
+      border: 1px solid #999;
+      padding: 6px 10px;
+      vertical-align: middle;
+    }
+    .meta-table td:first-child,
+    .supplier-table td:first-child {
+      background: #f0f0f0;
+      font-weight: 700;
+      width: 80px;
+      white-space: nowrap;
+    }
+    .supplier-table td:first-child { width: 90px; }
+
+    /* 차량 정보 */
+    .vehicle-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 14px;
+    }
+    .vehicle-table td {
+      border: 1px solid #999;
+      padding: 6px 10px;
+      vertical-align: middle;
+    }
+    .vehicle-table td.label {
+      background: #f0f0f0;
+      font-weight: 700;
+      width: 70px;
+      white-space: nowrap;
+    }
+    .vehicle-table td.value { min-width: 120px; }
+    .vehicle-table td.value-wide { min-width: 200px; }
+
+    /* 품목 테이블 */
+    .items-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 14px;
+    }
+    .items-table th {
+      background: #f0f0f0;
+      border: 1px solid #999;
+      padding: 7px 6px;
+      text-align: center;
+      font-weight: 700;
+    }
+    .items-table td {
+      border: 1px solid #999;
+      padding: 6px 8px;
+      vertical-align: middle;
+    }
+    .items-table td.center { text-align: center; }
+    .items-table td.right { text-align: right; }
+    .items-table tr.empty td { height: 28px; }
+    .col-no    { width: 36px; }
+    .col-name  { }
+    .col-qty   { width: 46px; }
+    .col-price { width: 110px; }
+    .col-total { width: 110px; }
+    .items-table th { line-height: 1.4; }
+
+    /* 합계 영역 */
+    .summary-wrap {
+      display: flex;
+      justify-content: flex-end;
+    }
+    .summary-table {
+      border-collapse: collapse;
+      width: 320px;
+    }
+    .summary-table td {
+      border: 1px solid #999;
+      padding: 7px 12px;
+    }
+    .summary-table td:first-child {
+      background: #f0f0f0;
+      font-weight: 700;
+      text-align: center;
+      width: 160px;
+    }
+    .summary-table td:last-child {
+      text-align: right;
+    }
+    .summary-table tr.total-row td {
+      font-weight: 700;
+      font-size: 13px;
+    }
+
+    /* 인쇄용 */
+    @media print {
+      body { background: #fff; }
+      .page { margin: 0; padding: 20mm 18mm; width: 210mm; }
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <div class="title">부 품 견 적 서</div>
+
+  <!-- 상단: 견적 메타 + 공급자 -->
+  <div class="header-grid">
+    <table class="meta-table">
+      <tr>
+        <td>견적번호</td>
+        <td>WP-U-20260611-001</td>
+      </tr>
+      <tr>
+        <td>일자</td>
+        <td>2026-06-11</td>
+      </tr>
+      <tr>
+        <td>담당자</td>
+        <td contenteditable="true" style="outline:none; cursor:text;">홍대현</td>
+      </tr>
+    </table>
+
+    <table class="supplier-table">
+      <tr>
+        <td>공급자</td>
+        <td>주식회사 위페어</td>
+      </tr>
+      <tr>
+        <td>사업자번호</td>
+        <td>178-88-03012</td>
+      </tr>
+      <tr>
+        <td>주소</td>
+        <td>서울특별시 관악구 호암로22길 32, 5층 502호</td>
+      </tr>
+      <tr>
+        <td>담당자</td>
+        <td>홍대현 / 010-3942-4945</td>
+      </tr>
+      <tr>
+        <td>계좌번호</td>
+        <td>하나은행 120-910020-43804</td>
+      </tr>
+    </table>
+  </div>
+
+  <!-- 차량 정보 (컬러코드 제외) -->
+  <table class="vehicle-table">
+    <tr>
+      <td class="label">차량번호</td>
+      <td class="value"></td>
+      <td class="label">차대번호</td>
+      <td class="value-wide"></td>
+    </tr>
+    <tr>
+      <td class="label">브랜드</td>
+      <td class="value"></td>
+      <td class="label">차량정보</td>
+      <td class="value-wide"></td>
+    </tr>
+    <tr>
+      <td class="label">업체명</td>
+      <td class="value"></td>
+      <td class="label">주소</td>
+      <td class="value-wide"></td>
+    </tr>
+  </table>
+
+  <!-- 품목 (품번 제외, 납품예상일 제외) -->
+  <table class="items-table">
+    <thead>
+      <tr>
+        <th class="col-no">No</th>
+        <th class="col-name">품명</th>
+        <th class="col-qty">수량</th>
+        <th class="col-price">납품단가<br><span style="font-weight:400; font-size:11px;">(VAT별도)</span></th>
+        <th class="col-total">총 납품가<br><span style="font-weight:400; font-size:11px;">(VAT별도)</span></th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="center">1</td>
+        <td></td>
+        <td class="center"></td>
+        <td class="right"></td>
+        <td class="right"></td>
+      </tr>
+      <tr>
+        <td class="center">2</td>
+        <td></td>
+        <td class="center"></td>
+        <td class="right"></td>
+        <td class="right"></td>
+      </tr>
+      <tr>
+        <td class="center">3</td>
+        <td></td>
+        <td class="center"></td>
+        <td class="right"></td>
+        <td class="right"></td>
+      </tr>
+      <tr>
+        <td class="center">4</td>
+        <td></td>
+        <td class="center"></td>
+        <td class="right"></td>
+        <td class="right"></td>
+      </tr>
+      <tr>
+        <td class="center">5</td>
+        <td></td>
+        <td class="center"></td>
+        <td class="right"></td>
+        <td class="right"></td>
+      </tr>
+      <tr class="empty">
+        <td></td><td></td><td></td><td></td><td></td>
+      </tr>
+      <tr class="empty">
+        <td></td><td></td><td></td><td></td><td></td>
+      </tr>
+      <tr class="empty">
+        <td></td><td></td><td></td><td></td><td></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- 합계 -->
+  <div class="summary-wrap">
+    <table class="summary-table">
+      <tr>
+        <td>공급가액</td>
+        <td></td>
+      </tr>
+      <tr>
+        <td>부가세</td>
+        <td></td>
+      </tr>
+      <tr class="total-row">
+        <td>합계 (VAT 포함)</td>
+        <td></td>
+      </tr>
+    </table>
+  </div>
+
+</div>
+</body>
+</html>

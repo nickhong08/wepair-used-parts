@@ -1,0 +1,1080 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>위페어 중고부품 운영</title>
+<style>
+  :root{--navy:#1f3a5f;--blue:#2c6ecb;--bg:#f4f6f9;--line:#dde3ea;--muted:#7a8699;--ok:#1f9d6b;--warn:#d9822b;--red:#d64545;--purple:#7c3aed}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;background:var(--bg);color:#1c2533;font-size:14px}
+  header{background:#0a0a0a;color:#fff;padding:14px 22px;display:flex;align-items:center;gap:16px}
+  header h1{font-size:15px;margin:0;font-weight:600;color:#e8edf3}
+  header .tag{font-size:11px;background:#ffffff1a;padding:3px 9px;border-radius:10px;color:#cfd7e2}
+  header .spacer{flex:1}
+  nav{display:flex;gap:4px;background:#fff;padding:0 22px;border-bottom:1px solid var(--line)}
+  nav button{background:none;border:none;padding:14px 16px;font-size:14px;cursor:pointer;color:var(--muted);border-bottom:3px solid transparent;font-weight:600;transition:.15s}
+  nav button.active{color:var(--navy);border-bottom-color:var(--blue)}
+  main{padding:22px;max-width:1180px;margin:0 auto}
+  .tab{display:none}.tab.active{display:block}
+  .card{background:#fff;border:1px solid var(--line);border-radius:10px;padding:20px;margin-bottom:18px}
+  .card h2{margin:0 0 14px;font-size:15px;color:var(--navy)}
+  .grid{display:grid;gap:12px}
+  .g2{grid-template-columns:1fr 1fr}.g3{grid-template-columns:1fr 1fr 1fr}.g4{grid-template-columns:repeat(4,1fr)}
+  label{display:block;font-size:12px;color:var(--muted);margin-bottom:4px;font-weight:600}
+  input,select,textarea{width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:7px;font-size:14px;font-family:inherit;background:#fff;transition:.15s}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--blue)}
+  button.btn{background:var(--blue);color:#fff;border:none;padding:10px 18px;border-radius:7px;font-size:14px;font-weight:700;cursor:pointer;transition:.15s}
+  button.btn:hover{opacity:.88}
+  button.btn.ghost{background:#fff;color:var(--navy);border:1px solid var(--line)}
+  button.btn.ghost:hover{border-color:var(--blue);color:var(--blue)}
+  button.btn.gray{background:#eef1f5;color:#445;border:1px solid var(--line)}
+  button.btn.red{background:var(--red);color:#fff;border:none}
+  button.btn.ok{background:var(--ok);color:#fff;border:none}
+  button.btn.warn{background:var(--warn);color:#fff;border:none}
+  button.btn.sm{padding:5px 11px;font-size:12px}
+  .row-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;align-items:center}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{border:1px solid var(--line);padding:8px 10px}
+  th{background:#f0f3f7;color:var(--navy);font-weight:700;font-size:12px;text-align:center;white-space:nowrap}
+  td{vertical-align:middle}
+  td.c{text-align:center}td.r{text-align:right}
+  td input,td select{border:none;border-radius:0;padding:6px;width:100%;background:transparent;font-family:inherit;font-size:13px}
+  td input:focus,td select:focus{outline:1px solid var(--blue);background:#fff}
+  td input.num{text-align:right}
+  .totals{display:flex;justify-content:flex-end;margin-top:14px}
+  .totals table{width:320px}
+  .totals td{padding:8px 14px}
+  .totals td:first-child{background:#f0f3f7;font-weight:700;text-align:center;color:var(--navy)}
+  .totals td:last-child{text-align:right;font-variant-numeric:tabular-nums}
+  .totals tr.fin td{font-weight:800;font-size:14px}
+  .empty{padding:40px;text-align:center;color:var(--muted);font-size:13px}
+  /* Status — 견적요청/주문확정/청구대기/청구완료 */
+  .s0{background:#e7f0fb;color:#2c6ecb;font-weight:700;padding:3px 9px;border-radius:10px;font-size:11px;white-space:nowrap}
+  .s1{background:#eafaf2;color:#1f9d6b;font-weight:700;padding:3px 9px;border-radius:10px;font-size:11px;white-space:nowrap}
+  .s2{background:#fff3e0;color:#e65100;font-weight:700;padding:3px 9px;border-radius:10px;font-size:11px;white-space:nowrap}
+  .s3{background:#e8f5e9;color:#2e7d32;font-weight:700;padding:3px 9px;border-radius:10px;font-size:11px;white-space:nowrap}
+  /* Modal */
+  .modal-bg{display:none;position:fixed;inset:0;background:#0006;z-index:1000;align-items:center;justify-content:center}
+  .modal-bg.open{display:flex}
+  .modal{background:#fff;border-radius:12px;width:92%;max-width:680px;max-height:90vh;overflow-y:auto}
+  .modal-h{background:var(--navy);color:#fff;padding:16px 20px;font-weight:700;border-radius:12px 12px 0 0;display:flex;justify-content:space-between;align-items:center}
+  .modal-h button{background:none;border:none;color:#fff;font-size:18px;cursor:pointer;line-height:1}
+  .modal-b{padding:20px}
+  .modal-f{padding:14px 20px;display:flex;justify-content:flex-end;gap:8px;border-top:1px solid var(--line)}
+  /* KPI */
+  .kpi{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px}
+  .kpi .box{background:#fff;border:1px solid var(--line);border-radius:10px;padding:16px 20px}
+  .kpi .box .k{font-size:12px;color:var(--muted);font-weight:600}
+  .kpi .box .v{font-size:22px;font-weight:800;color:var(--navy);margin-top:6px}
+  /* Search bar */
+  .search-bar{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;align-items:flex-end}
+  .search-bar .sf{flex:1;min-width:140px}
+  /* Billing selection bar */
+  #bill-sel-bar{
+    position:sticky;top:0;z-index:100;
+    background:#1f3a5f;color:#fff;
+    padding:12px 18px;
+    display:flex;align-items:center;gap:16px;flex-wrap:wrap;
+    border-radius:8px;margin-bottom:14px;
+    transition:.2s;
+  }
+  #bill-sel-bar.empty-sel{background:#eef1f5;color:var(--muted)}
+  #bill-sel-bar .sel-info{font-size:13px;font-weight:600;flex:1}
+  #bill-sel-bar .sel-total{font-size:18px;font-weight:800}
+  /* Row selected highlight */
+  tr.selected-row td{background:#edf4ff}
+  /* Checkbox */
+  input[type=checkbox]{width:auto;accent-color:var(--blue)}
+  /* Print */
+  @media print{
+    header,nav,.noprint,button{display:none!important}
+    body{background:#fff}
+    main{display:none}
+    #print-area{display:block!important}
+  }
+  /* Print area */
+  #print-area{display:none;font-family:'Malgun Gothic','맑은 고딕',sans-serif;font-size:12px;color:#1a1a1a;padding:40px 48px}
+  .doc-title{text-align:center;font-size:28px;font-weight:700;letter-spacing:10px;margin-bottom:28px}
+  .doc-hdr{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}
+  .doc-hdr table{width:100%;border-collapse:collapse}
+  .doc-hdr td{border:1px solid #999;padding:6px 10px;vertical-align:middle}
+  .doc-hdr td:first-child{background:#f0f0f0;font-weight:700;white-space:nowrap;width:80px}
+  .doc-veh{width:100%;border-collapse:collapse;margin-bottom:14px}
+  .doc-veh td{border:1px solid #999;padding:6px 10px;vertical-align:middle}
+  .doc-veh td.lbl{background:#f0f0f0;font-weight:700;width:70px;text-align:center;white-space:nowrap}
+  .doc-items{width:100%;border-collapse:collapse;margin-bottom:0}
+  .doc-items th{background:#f0f0f0;border:1px solid #999;padding:6px 10px;font-weight:700;text-align:center}
+  .doc-items td{border:1px solid #999;padding:6px 10px;vertical-align:middle}
+  .doc-items td.c{text-align:center}.doc-items td.r{text-align:right;font-variant-numeric:tabular-nums}
+  .doc-sum-wrap{display:flex;justify-content:flex-end}
+  .doc-sum{width:320px;border-collapse:collapse}
+  .doc-sum td{border:1px solid #999;padding:6px 10px}
+  .doc-sum td:first-child{background:#f0f0f0;font-weight:700;text-align:center;width:160px}
+  .doc-sum td:last-child{text-align:right;font-variant-numeric:tabular-nums}
+  .doc-sum tr.fin td{font-weight:700;font-size:13px}
+  /* 청구서 전용 */
+  .bill-doc-period{font-size:12px;color:#555;text-align:right;margin-bottom:10px}
+  .bill-doc-group-hd{background:#1f3a5f;color:#fff;font-weight:700;padding:7px 10px;font-size:12px}
+  .bill-doc-subtotal td{background:#f0f3f7;font-weight:700}
+  .bill-doc-grandtotal td{background:#1f3a5f;color:#fff;font-weight:800;font-size:13px}
+  .page-break{page-break-before:always}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>위페어 중고부품 운영</h1>
+  <span class="tag">중고부품 거래관리</span>
+  <span class="spacer"></span>
+</header>
+
+<nav class="noprint">
+  <button data-tab="order" class="active">＋ 주문 입력</button>
+  <button data-tab="list">주문 대장</button>
+  <button data-tab="billing">청구 관리</button>
+  <button data-tab="clients">거래처 관리</button>
+</nav>
+
+<main>
+
+<!-- ══════════════ 주문 입력 ══════════════ -->
+<div id="tab-order" class="tab active">
+  <div class="card">
+    <h2>기본 정보</h2>
+    <div class="grid g4" style="margin-bottom:12px">
+      <div><label>견적번호</label><input id="o-id" readonly style="background:#f0f3f7;color:var(--muted)"></div>
+      <div><label>견적일자</label><input id="o-date" type="date"></div>
+      <div><label>담당자</label><input id="o-manager" value="홍대현"></div>
+      <div><label>상태</label>
+        <select id="o-status">
+          <option value="0">견적요청</option>
+          <option value="1">주문확정</option>
+          <option value="2">청구대기</option>
+          <option value="3">청구완료</option>
+        </select>
+      </div>
+    </div>
+    <div class="grid g3">
+      <div><label>거래처 (공업사)</label>
+        <select id="o-client" onchange="onClientSelect()"><option value="">— 선택 —</option></select>
+      </div>
+      <div><label>업체 주소</label><input id="o-client-addr" readonly style="background:#f0f3f7;color:var(--muted)"></div>
+      <div style="display:flex;align-items:flex-end">
+        <button class="btn ghost sm" onclick="openClientModal()">＋ 새 거래처 등록</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>차량 정보</h2>
+    <div class="grid g4">
+      <div><label>차량번호</label><input id="o-plate" placeholder="예) 15고0420"></div>
+      <div><label>차대번호</label><input id="o-vin" placeholder="예) WDDUF3DB7GA247832"></div>
+      <div><label>브랜드</label>
+        <select id="o-brand">
+          <option value="">— 선택 —</option>
+          <option>MB (벤츠)</option><option>BMW</option><option>AUDI</option><option>VW</option>
+          <option>LEXUS</option><option>TOYOTA</option><option>HONDA</option><option>NISSAN</option>
+          <option>PORSCHE</option><option>VOLVO</option><option>JAGUAR</option><option>LANDROVER</option>
+          <option>TESLA</option><option>기타</option>
+        </select>
+      </div>
+      <div><label>차량정보 (차종)</label><input id="o-model" placeholder="예) S350 BlueTEC 4MATIC"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>부품 목록</h2>
+    <table>
+      <thead>
+        <tr>
+          <th style="width:36px">No</th><th>품명</th><th style="width:60px">수량</th>
+          <th style="width:130px">납품단가<br><span style="font-weight:400;font-size:11px">(VAT별도)</span></th>
+          <th style="width:130px">총 납품가<br><span style="font-weight:400;font-size:11px">(VAT별도)</span></th>
+          <th style="width:40px" class="noprint"></th>
+        </tr>
+      </thead>
+      <tbody id="items-body"></tbody>
+    </table>
+    <div class="row-actions noprint">
+      <button class="btn ghost sm" onclick="addRow()">＋ 행 추가</button>
+    </div>
+    <div class="totals">
+      <table>
+        <tr><td>공급가액</td><td id="t-sub">0</td></tr>
+        <tr><td>부가세 (10%)</td><td id="t-vat">0</td></tr>
+        <tr class="fin"><td>합계 (VAT 포함)</td><td id="t-tot">0</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="card noprint">
+    <label>비고</label><textarea id="o-note" rows="2" placeholder="특이사항 입력"></textarea>
+  </div>
+
+  <div class="row-actions noprint">
+    <button class="btn" onclick="saveOrder()">💾 저장</button>
+    <button class="btn ghost" onclick="printQuote()">🖨 견적서 인쇄</button>
+    <button class="btn gray" onclick="resetOrder()">초기화</button>
+    <span id="save-msg" style="font-size:12px;color:var(--ok);margin-left:8px"></span>
+  </div>
+</div>
+
+<!-- ══════════════ 주문 대장 ══════════════ -->
+<div id="tab-list" class="tab">
+  <div class="search-bar noprint">
+    <div class="sf"><label>거래처명</label><input id="f-client" placeholder="검색" oninput="renderList()"></div>
+    <div class="sf"><label>차량번호</label><input id="f-plate" placeholder="검색" oninput="renderList()"></div>
+    <div class="sf"><label>시작일</label><input id="f-from" type="date" onchange="renderList()"></div>
+    <div class="sf"><label>종료일</label><input id="f-to" type="date" onchange="renderList()"></div>
+    <div class="sf"><label>상태</label>
+      <select id="f-status" onchange="renderList()">
+        <option value="">전체</option>
+        <option value="0">견적요청</option>
+        <option value="1">주문확정</option>
+        <option value="2">청구대기</option>
+        <option value="3">청구완료</option>
+      </select>
+    </div>
+    <button class="btn sm ghost" onclick="clearFilters()">초기화</button>
+  </div>
+  <div class="card" style="padding:0;overflow:hidden">
+    <table>
+      <thead>
+        <tr><th>견적번호</th><th>일자</th><th>거래처</th><th>차량번호</th>
+        <th>차종</th><th class="r">합계(VAT포함)</th><th>상태</th><th class="noprint">관리</th></tr>
+      </thead>
+      <tbody id="list-body"></tbody>
+    </table>
+    <div id="list-empty" class="empty" style="display:none">등록된 주문이 없습니다.</div>
+  </div>
+</div>
+
+<!-- ══════════════ 청구 관리 ══════════════ -->
+<div id="tab-billing" class="tab">
+
+  <!-- 필터 -->
+  <div class="card noprint">
+    <h2>조회 조건</h2>
+    <div class="search-bar" style="margin-bottom:0">
+      <div class="sf"><label>시작일</label><input id="bf-from" type="date" onchange="renderBilling()"></div>
+      <div class="sf"><label>종료일</label><input id="bf-to" type="date" onchange="renderBilling()"></div>
+      <div class="sf"><label>거래처</label>
+        <select id="bf-client" onchange="renderBilling()">
+          <option value="">전체</option>
+        </select>
+      </div>
+      <div class="sf"><label>상태</label>
+        <select id="bf-status" onchange="renderBilling()">
+          <option value="">전체</option>
+          <option value="0">견적요청</option>
+          <option value="1">주문확정</option>
+          <option value="2">청구대기</option>
+          <option value="3">청구완료</option>
+        </select>
+      </div>
+      <button class="btn sm ghost" onclick="clearBillFilters()">초기화</button>
+    </div>
+  </div>
+
+  <!-- 선택 액션 바 -->
+  <div id="bill-sel-bar" class="empty-sel noprint">
+    <div class="sel-info" id="bill-sel-info">조회된 주문에서 청구할 건을 선택하세요</div>
+    <div id="bill-sel-total" class="sel-total" style="display:none"></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn sm gray" onclick="selectAllBill()">전체 선택</button>
+      <button class="btn sm gray" onclick="deselectAllBill()">선택 해제</button>
+      <button class="btn sm" id="bill-gen-btn" onclick="generateInvoice()" disabled style="opacity:.4">청구서 생성</button>
+    </div>
+  </div>
+
+  <!-- 주문 목록 (체크박스) -->
+  <div class="card" style="padding:0;overflow:hidden">
+    <table>
+      <thead>
+        <tr>
+          <th style="width:36px" class="noprint"><input type="checkbox" id="bill-check-all" onchange="toggleAllBill(this)"></th>
+          <th>견적번호</th><th>일자</th><th>거래처</th><th>차량번호</th>
+          <th>부품 내역</th><th class="r">합계(VAT포함)</th><th>상태</th>
+        </tr>
+      </thead>
+      <tbody id="bill-body"></tbody>
+    </table>
+    <div id="bill-empty" class="empty" style="display:none">조회 결과가 없습니다.</div>
+  </div>
+
+</div>
+
+<!-- ══════════════ 거래처 관리 ══════════════ -->
+<div id="tab-clients" class="tab">
+  <div class="card noprint">
+    <h2>새 거래처 등록</h2>
+    <div class="grid g3" style="margin-bottom:12px">
+      <div><label>업체명 *</label><input id="nc-name" placeholder="예) 지에스리스토어"></div>
+      <div><label>주소</label><input id="nc-addr" placeholder="예) 경기도 파주시..."></div>
+      <div><label>담당자 연락처</label><input id="nc-tel" placeholder="010-0000-0000"></div>
+    </div>
+    <button class="btn" onclick="addClient()">＋ 등록</button>
+    <span id="client-msg" style="font-size:12px;color:var(--ok);margin-left:10px"></span>
+  </div>
+  <div class="card" style="padding:0;overflow:hidden">
+    <table>
+      <thead><tr><th>업체명</th><th>주소</th><th>연락처</th><th>주문건수</th><th class="noprint">관리</th></tr></thead>
+      <tbody id="clients-body"></tbody>
+    </table>
+    <div id="clients-empty" class="empty" style="display:none">등록된 거래처가 없습니다.</div>
+  </div>
+</div>
+
+</main>
+
+<!-- ══════════════ 주문 수정 모달 ══════════════ -->
+<div class="modal-bg" id="edit-modal">
+  <div class="modal">
+    <div class="modal-h"><span id="edit-modal-title">주문 상세</span><button onclick="closeEditModal()">✕</button></div>
+    <div class="modal-b" id="edit-modal-body"></div>
+    <div class="modal-f">
+      <button class="btn ghost" onclick="closeEditModal()">닫기</button>
+      <button class="btn ghost" onclick="printFromModal()">🖨 견적서</button>
+      <button class="btn" onclick="saveEditModal()">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ 거래처 등록 모달 ══════════════ -->
+<div class="modal-bg" id="client-modal">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-h"><span>새 거래처 등록</span><button onclick="closeClientModal()">✕</button></div>
+    <div class="modal-b">
+      <div class="grid" style="gap:12px">
+        <div><label>업체명 *</label><input id="mc-name"></div>
+        <div><label>주소</label><input id="mc-addr"></div>
+        <div><label>담당자 연락처</label><input id="mc-tel"></div>
+      </div>
+    </div>
+    <div class="modal-f">
+      <button class="btn ghost" onclick="closeClientModal()">취소</button>
+      <button class="btn" onclick="addClientFromModal()">등록</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ 로딩 오버레이 ══════════════ -->
+<div id="loading-overlay" style="display:none;position:fixed;inset:0;background:#0006;z-index:9999;align-items:center;justify-content:center;flex-direction:column;gap:12px;color:#fff">
+  <div style="width:36px;height:36px;border:4px solid #fff4;border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite"></div>
+  <div id="loading-msg" style="font-size:14px;font-weight:600">처리 중...</div>
+</div>
+<style>@keyframes spin{to{transform:rotate(360deg)}}</style>
+
+<!-- ══════════════ 인쇄 영역 ══════════════ -->
+<div id="print-area"></div>
+
+<script>
+// ──────────── 상수 ────────────
+const STATUSES = ['견적요청','주문확정','청구대기','청구완료'];
+const SUPPLIER = {
+  name:'주식회사 위페어', biz:'178-88-03012',
+  addr:'서울특별시 관악구 호암로22길 32, 5층 502호',
+  tel:'010-3942-4945', bank:'하나은행 120-910020-43804'
+};
+
+// ──────────── API 설정 ────────────
+// Apps Script 배포 후 아래 URL을 붙여넣으세요
+const API_URL = 'https://script.google.com/macros/s/AKfycbz5pyW0otbh3XKRRVp2QO_yN5Nw_MIAEc8L5FFrh6QqhgtnTVYP-JD6sDArGdEYq-AA/exec';
+
+// ──────────── 캐시 ────────────
+const _cache = { orders: null, clients: null };
+
+// ──────────── API 래퍼 ────────────
+async function apiGet(action) {
+  const res = await fetch(`${API_URL}?action=${action}`);
+  const data = await res.json();
+  if (data.error) throw new Error(data.error);
+  return data;
+}
+
+async function apiPost(body) {
+  const res = await fetch(API_URL, {
+    method: 'POST',
+    body: JSON.stringify(body)
+  });
+  const data = await res.json();
+  if (data.error) throw new Error(data.error);
+  return data;
+}
+
+async function withLoading(msg, fn) {
+  const overlay = document.getElementById('loading-overlay');
+  document.getElementById('loading-msg').textContent = msg;
+  overlay.style.display = 'flex';
+  try { return await fn(); }
+  catch(e) { alert('오류: ' + e.message); throw e; }
+  finally   { overlay.style.display = 'none'; }
+}
+
+// ──────────── 데이터 접근 (캐시 + API) ────────────
+async function getOrders() {
+  if (!_cache.orders) _cache.orders = await apiGet('getOrders');
+  return _cache.orders;
+}
+async function getClients() {
+  if (!_cache.clients) _cache.clients = await apiGet('getClients');
+  return _cache.clients;
+}
+async function saveOrderAPI(order) {
+  await apiPost({ action: 'saveOrder', record: order });
+  _cache.orders = null;
+}
+async function deleteOrderAPI(id) {
+  await apiPost({ action: 'deleteOrder', id });
+  _cache.orders = null;
+}
+async function saveClientAPI(client) {
+  await apiPost({ action: 'saveClient', record: client });
+  _cache.clients = null;
+}
+async function deleteClientAPI(id) {
+  await apiPost({ action: 'deleteClient', id });
+  _cache.clients = null;
+}
+
+// ──────────── 견적번호 ────────────
+async function genId(){
+  const d = new Date().toISOString().slice(0,10).replace(/-/g,'');
+  const k = 'wp_used_seq_'+d;
+  // 당일 기존 주문에서 최대 시퀀스 추출
+  let maxSeq = parseInt(localStorage.getItem(k)||'0');
+  try {
+    const orders = await getOrders();
+    orders.filter(o=>o.id && o.id.includes('WP-U-'+d)).forEach(o=>{
+      const parts = o.id.split('-');
+      const seq = parseInt(parts[parts.length-1]||'0');
+      if(seq > maxSeq) maxSeq = seq;
+    });
+  } catch(_){}
+  const n = maxSeq + 1;
+  localStorage.setItem(k, n);
+  return 'WP-U-'+d+'-'+String(n).padStart(3,'0');
+}
+
+// ──────────── 탭 ────────────
+document.querySelectorAll('nav button').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    if(!API_URL){ alert('상단 스크립트의 API_URL을 먼저 입력해주세요.'); return; }
+    document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-'+btn.dataset.tab).classList.add('active');
+    if(btn.dataset.tab==='list')    renderList();
+    if(btn.dataset.tab==='billing') initBillingTab();
+    if(btn.dataset.tab==='clients') renderClients();
+  });
+});
+
+// ──────────── 주문 입력 ────────────
+let editingOrderId = null;
+let rows = [];
+
+async function initOrder(){
+  document.getElementById('o-id').value = await genId();
+  document.getElementById('o-date').value = today();
+  document.getElementById('o-manager').value = '홍대현';
+  document.getElementById('o-status').value = '0';
+  document.getElementById('o-client').value = '';
+  document.getElementById('o-client-addr').value = '';
+  document.getElementById('o-plate').value = '';
+  document.getElementById('o-vin').value = '';
+  document.getElementById('o-brand').value = '';
+  document.getElementById('o-model').value = '';
+  document.getElementById('o-note').value = '';
+  rows = []; renderRows(); addRow(); calcTotals();
+  await refreshClientDropdown(); editingOrderId = null;
+}
+
+async function refreshClientDropdown(){
+  const sel = document.getElementById('o-client');
+  const cur = sel.value;
+  try {
+    const clients = await getClients();
+    sel.innerHTML = '<option value="">— 선택 —</option>';
+    clients.forEach(c=>{ const o=new Option(c.name,c.id); sel.appendChild(o); });
+    if(cur) sel.value = cur;
+  } catch(_){}
+}
+
+async function onClientSelect(){
+  try {
+    const clients = await getClients();
+    const c = clients.find(x=>x.id===document.getElementById('o-client').value);
+    document.getElementById('o-client-addr').value = c ? c.addr : '';
+  } catch(_){}
+}
+
+function addRow(){ rows.push({name:'',qty:1,price:0}); renderRows(); }
+function removeRow(i){ rows.splice(i,1); renderRows(); }
+
+function renderRows(){
+  const tb = document.getElementById('items-body');
+  tb.innerHTML = '';
+  rows.forEach((r,i)=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="c">${i+1}</td>
+      <td><input value="${r.name||''}" oninput="rows[${i}].name=this.value" placeholder="부품명"></td>
+      <td><input class="num" type="number" min="1" value="${r.qty||1}" oninput="rows[${i}].qty=+this.value||1;calcTotals()"></td>
+      <td><input class="num" type="number" min="0" value="${r.price||''}" placeholder="0" oninput="rows[${i}].price=+this.value||0;calcTotals()"></td>
+      <td class="r" id="rt-${i}">${fmt((r.qty||1)*(r.price||0))}</td>
+      <td class="c noprint"><button class="btn gray sm" onclick="removeRow(${i})">✕</button></td>`;
+    tb.appendChild(tr);
+  });
+  calcTotals();
+}
+
+function calcTotals(){
+  let sub=0;
+  rows.forEach((r,i)=>{
+    const t=(r.qty||1)*(r.price||0); sub+=t;
+    const el=document.getElementById('rt-'+i); if(el) el.textContent=fmt(t);
+  });
+  const vat=Math.round(sub*.1);
+  setText('t-sub',fmt(sub)); setText('t-vat',fmt(vat)); setText('t-tot',fmt(sub+vat));
+}
+
+function getOrderFromForm(){
+  const cid = document.getElementById('o-client').value;
+  const client = loadClients().find(c=>c.id===cid)||{name:'',addr:''};
+  const sub = rows.reduce((a,r)=>a+(r.qty||1)*(r.price||0),0);
+  const vat = Math.round(sub*.1);
+  return {
+    id: document.getElementById('o-id').value,
+    date: document.getElementById('o-date').value,
+    manager: document.getElementById('o-manager').value,
+    status: parseInt(document.getElementById('o-status').value)||0,
+    clientId:cid, clientName:client.name, clientAddr:client.addr||document.getElementById('o-client-addr').value,
+    plate: document.getElementById('o-plate').value,
+    vin: document.getElementById('o-vin').value,
+    brand: document.getElementById('o-brand').value,
+    model: document.getElementById('o-model').value,
+    items: JSON.parse(JSON.stringify(rows)),
+    sub, vat, total:sub+vat,
+    note: document.getElementById('o-note').value
+  };
+}
+
+async function saveOrder(){
+  const o = getOrderFromForm();
+  if(!o.clientName){ alert('거래처를 선택해주세요.'); return; }
+  if(!o.plate && !o.vin){ alert('차량번호 또는 차대번호를 입력해주세요.'); return; }
+  if(!rows.some(r=>r.name)){ alert('부품 품목을 1개 이상 입력해주세요.'); return; }
+  await withLoading('저장 중...', () => saveOrderAPI(o));
+  const msg=document.getElementById('save-msg');
+  msg.textContent='✓ 저장 완료 ('+o.id+')';
+  setTimeout(()=>msg.textContent='',3000);
+  if(!editingOrderId) await initOrder();
+}
+
+function resetOrder(){ if(confirm('입력 내용을 초기화하겠습니까?')) initOrder(); }
+
+// ──────────── 주문 대장 ────────────
+async function renderList(){
+  const fC=(document.getElementById('f-client').value||'').toLowerCase();
+  const fP=(document.getElementById('f-plate').value||'').toLowerCase();
+  const fF=document.getElementById('f-from').value;
+  const fT=document.getElementById('f-to').value;
+  const fS=document.getElementById('f-status').value;
+
+  let allOrders;
+  try { allOrders = await getOrders(); } catch(_){ return; }
+
+  const filtered = allOrders.filter(o=>{
+    if(fC && !(o.clientName||'').toLowerCase().includes(fC)) return false;
+    if(fP && !(o.plate||'').toLowerCase().includes(fP)) return false;
+    if(fF && o.date<fF) return false;
+    if(fT && o.date>fT) return false;
+    if(fS!=='' && String(o.status)!==fS) return false;
+    return true;
+  }).sort((a,b)=>b.date.localeCompare(a.date)||b.id.localeCompare(a.id));
+
+  const tb=document.getElementById('list-body');
+  const empty=document.getElementById('list-empty');
+  tb.innerHTML='';
+  if(!filtered.length){ empty.style.display=''; return; }
+  empty.style.display='none';
+  filtered.forEach(o=>{
+    const tr=document.createElement('tr');
+    tr.style.cursor='pointer';
+    tr.innerHTML=`
+      <td class="c">${o.id}</td><td class="c">${o.date}</td>
+      <td>${o.clientName||''}</td><td class="c">${o.plate||''}</td>
+      <td>${o.model||o.brand||''}</td>
+      <td class="r">${fmt(o.total||0)}</td>
+      <td class="c"><span class="s${o.status||0}">${STATUSES[o.status||0]}</span></td>
+      <td class="c noprint" style="white-space:nowrap">
+        <button class="btn ghost sm" onclick="event.stopPropagation();openEditModal('${o.id}')">수정</button>
+        <button class="btn gray sm" onclick="event.stopPropagation();deleteOrder('${o.id}')">삭제</button>
+      </td>`;
+    tr.addEventListener('click',()=>openEditModal(o.id));
+    tb.appendChild(tr);
+  });
+}
+
+function clearFilters(){
+  ['f-client','f-plate','f-from','f-to'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('f-status').value='';
+  renderList();
+}
+
+async function deleteOrder(id){
+  if(!confirm('삭제하겠습니까?')) return;
+  await withLoading('삭제 중...', () => deleteOrderAPI(id));
+  renderList();
+}
+
+// ──────────── 수정 모달 ────────────
+let modalOrderId=null, modalRows=[];
+
+async function openEditModal(id){
+  let orders; try { orders = await getOrders(); } catch(_){ return; }
+  const order=orders.find(o=>o.id===id);
+  if(!order) return;
+  modalOrderId=id;
+  modalRows=JSON.parse(JSON.stringify(order.items||[]));
+  document.getElementById('edit-modal-title').textContent='주문 상세 — '+id;
+  let clients=[]; try { clients = await getClients(); } catch(_){}
+  const cOpts=clients.map(c=>`<option value="${c.id}" ${c.id===order.clientId?'selected':''}>${c.name}</option>`).join('');
+  document.getElementById('edit-modal-body').innerHTML=`
+    <div class="grid g3" style="margin-bottom:12px">
+      <div><label>견적번호</label><input id="em-id" value="${order.id}" readonly style="background:#f0f3f7;color:var(--muted)"></div>
+      <div><label>일자</label><input id="em-date" type="date" value="${order.date}"></div>
+      <div><label>담당자</label><input id="em-manager" value="${order.manager||'홍대현'}"></div>
+    </div>
+    <div class="grid g2" style="margin-bottom:12px">
+      <div><label>거래처</label><select id="em-client">${cOpts}</select></div>
+      <div><label>상태</label><select id="em-status">
+        ${STATUSES.map((s,i)=>`<option value="${i}" ${(order.status??0)===i?'selected':''}>${s}</option>`).join('')}
+      </select></div>
+    </div>
+    <div class="grid g4" style="margin-bottom:12px">
+      <div><label>차량번호</label><input id="em-plate" value="${order.plate||''}"></div>
+      <div><label>차대번호</label><input id="em-vin" value="${order.vin||''}"></div>
+      <div><label>브랜드</label><input id="em-brand" value="${order.brand||''}"></div>
+      <div><label>차종</label><input id="em-model" value="${order.model||''}"></div>
+    </div>
+    <table style="margin-bottom:8px">
+      <thead><tr><th style="width:36px">No</th><th>품명</th><th style="width:60px">수량</th>
+        <th style="width:120px">납품단가</th><th style="width:120px">총납품가</th><th style="width:36px"></th></tr></thead>
+      <tbody id="em-rows"></tbody>
+    </table>
+    <button class="btn ghost sm" onclick="addModalRow()">＋ 행 추가</button>
+    <div class="totals" style="margin-top:12px">
+      <table>
+        <tr><td>공급가액</td><td id="em-sub">0</td></tr>
+        <tr><td>부가세</td><td id="em-vat">0</td></tr>
+        <tr class="fin"><td>합계</td><td id="em-tot">0</td></tr>
+      </table>
+    </div>
+    <div style="margin-top:12px"><label>비고</label><textarea id="em-note" rows="2">${order.note||''}</textarea></div>`;
+  renderModalRows();
+  document.getElementById('edit-modal').classList.add('open');
+}
+
+function renderModalRows(){
+  const tb=document.getElementById('em-rows'); if(!tb) return;
+  tb.innerHTML='';
+  modalRows.forEach((r,i)=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`
+      <td class="c">${i+1}</td>
+      <td><input value="${r.name||''}" oninput="modalRows[${i}].name=this.value"></td>
+      <td><input class="num" type="number" min="1" value="${r.qty||1}" oninput="modalRows[${i}].qty=+this.value||1;calcModalTotals()"></td>
+      <td><input class="num" type="number" min="0" value="${r.price||0}" oninput="modalRows[${i}].price=+this.value||0;calcModalTotals()"></td>
+      <td class="r" id="mr-${i}">${fmt((r.qty||1)*(r.price||0))}</td>
+      <td class="c"><button class="btn gray sm" onclick="removeModalRow(${i})">✕</button></td>`;
+    tb.appendChild(tr);
+  });
+  calcModalTotals();
+}
+
+function addModalRow(){ modalRows.push({name:'',qty:1,price:0}); renderModalRows(); }
+function removeModalRow(i){ modalRows.splice(i,1); renderModalRows(); }
+
+function calcModalTotals(){
+  let sub=0;
+  modalRows.forEach((r,i)=>{
+    const t=(r.qty||1)*(r.price||0); sub+=t;
+    const el=document.getElementById('mr-'+i); if(el) el.textContent=fmt(t);
+  });
+  const vat=Math.round(sub*.1);
+  setText('em-sub',fmt(sub)); setText('em-vat',fmt(vat)); setText('em-tot',fmt(sub+vat));
+}
+
+async function saveEditModal(){
+  let orders; try { orders = await getOrders(); } catch(_){ return; }
+  const o = orders.find(x=>x.id===modalOrderId); if(!o) return;
+  let clients=[]; try { clients = await getClients(); } catch(_){}
+  const cid=document.getElementById('em-client').value;
+  const client=clients.find(c=>c.id===cid)||{name:'',addr:''};
+  const sub=modalRows.reduce((a,r)=>a+(r.qty||1)*(r.price||0),0);
+  const vat=Math.round(sub*.1);
+  const updated = Object.assign({}, o, {
+    date:document.getElementById('em-date').value,
+    manager:document.getElementById('em-manager').value,
+    status:parseInt(document.getElementById('em-status').value)||0,
+    clientId:cid, clientName:client.name, clientAddr:client.addr,
+    plate:document.getElementById('em-plate').value,
+    vin:document.getElementById('em-vin').value,
+    brand:document.getElementById('em-brand').value,
+    model:document.getElementById('em-model').value,
+    items:JSON.parse(JSON.stringify(modalRows)),
+    sub,vat,total:sub+vat,
+    note:document.getElementById('em-note').value
+  });
+  await withLoading('저장 중...', () => saveOrderAPI(updated));
+  closeEditModal(); renderList();
+}
+
+async function printFromModal(){
+  let orders; try { orders = await getOrders(); } catch(_){ return; }
+  const order=orders.find(o=>o.id===modalOrderId);
+  if(order){ buildQuotePrint(order); closeEditModal(); setTimeout(()=>window.print(),200); }
+}
+function closeEditModal(){ document.getElementById('edit-modal').classList.remove('open'); modalOrderId=null; modalRows=[]; }
+
+// ──────────── 견적서 인쇄 ────────────
+function printQuote(){ const o=getOrderFromForm(); buildQuotePrint(o); window.print(); }
+
+function buildQuotePrint(o){
+  const sub=o.sub??o.items.reduce((a,r)=>a+(r.qty||1)*(r.price||0),0);
+  const vat=o.vat??Math.round(sub*.1); const total=o.total??sub+vat;
+  const iRows=(o.items||[]).map((r,i)=>`
+    <tr><td class="c">${i+1}</td><td>${r.name||''}</td>
+    <td class="c">${r.qty||1}</td>
+    <td class="r">${fmtN((r.price||0))}</td>
+    <td class="r">${fmtN((r.qty||1)*(r.price||0))}</td></tr>`).join('');
+  document.getElementById('print-area').innerHTML=`
+    <div class="doc-title">부 품 견 적 서</div>
+    <div class="doc-hdr">
+      <table>
+        <tr><td>견적번호</td><td>${o.id}</td></tr>
+        <tr><td>일자</td><td>${o.date}</td></tr>
+        <tr><td>담당자</td><td>${o.manager||'홍대현'}</td></tr>
+      </table>
+      <table>
+        <tr><td>공급자</td><td>${SUPPLIER.name}</td></tr>
+        <tr><td>사업자번호</td><td>${SUPPLIER.biz}</td></tr>
+        <tr><td>주소</td><td>${SUPPLIER.addr}</td></tr>
+        <tr><td>담당자</td><td>${o.manager||'홍대현'} / ${SUPPLIER.tel}</td></tr>
+        <tr><td>계좌번호</td><td>${SUPPLIER.bank}</td></tr>
+      </table>
+    </div>
+    <table class="doc-veh">
+      <tr><td class="lbl">차량번호</td><td>${o.plate||''}</td><td class="lbl">차대번호</td><td style="min-width:200px">${o.vin||''}</td></tr>
+      <tr><td class="lbl">브랜드</td><td>${o.brand||''}</td><td class="lbl">차량정보</td><td>${o.model||''}</td></tr>
+      <tr><td class="lbl">업체명</td><td>${o.clientName||''}</td><td class="lbl">주소</td><td>${o.clientAddr||''}</td></tr>
+    </table>
+    <table class="doc-items">
+      <thead><tr><th style="width:36px">No</th><th>품명</th><th style="width:50px">수량</th>
+        <th style="width:130px">납품단가<br><span style="font-weight:400;font-size:11px">(VAT별도)</span></th>
+        <th style="width:130px">총 납품가<br><span style="font-weight:400;font-size:11px">(VAT별도)</span></th></tr></thead>
+      <tbody>${iRows}</tbody>
+    </table>
+    <div class="doc-sum-wrap"><table class="doc-sum">
+      <tr><td>공급가액</td><td>${fmt(sub)}</td></tr>
+      <tr><td>부가세</td><td>${fmt(vat)}</td></tr>
+      <tr class="fin"><td>합계 (VAT 포함)</td><td>${fmt(total)}</td></tr>
+    </table></div>`;
+}
+
+// ══════════════════════════════════════════════
+// ──────────── 청구 관리 (선택형) ────────────
+// ══════════════════════════════════════════════
+let billSelected = new Set(); // 선택된 order id 집합
+let billFiltered = [];        // 현재 필터링된 orders
+
+async function initBillingTab(){
+  billSelected.clear();
+  const ym = new Date().toISOString().slice(0,7);
+  if(!document.getElementById('bf-from').value)
+    document.getElementById('bf-from').value = ym+'-01';
+  if(!document.getElementById('bf-to').value)
+    document.getElementById('bf-to').value = lastDay(ym);
+  const sel = document.getElementById('bf-client');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">전체</option>';
+  try {
+    const clients = await getClients();
+    clients.forEach(c=>{ const o=new Option(c.name,c.id); sel.appendChild(o); });
+  } catch(_){}
+  sel.value = cur;
+  renderBilling();
+}
+
+async function renderBilling(){
+  const fF=document.getElementById('bf-from').value;
+  const fT=document.getElementById('bf-to').value;
+  const fC=document.getElementById('bf-client').value;
+  const fS=document.getElementById('bf-status').value;
+
+  let allOrders; try { allOrders = await getOrders(); } catch(_){ return; }
+
+  billFiltered = allOrders.filter(o=>{
+    if(fF && o.date<fF) return false;
+    if(fT && o.date>fT) return false;
+    if(fC && o.clientId!==fC) return false;
+    if(fS!=='' && String(o.status)!==fS) return false;
+    return true;
+  }).sort((a,b)=>a.date.localeCompare(b.date)||a.id.localeCompare(b.id));
+
+  // 더 이상 목록에 없는 선택 제거
+  billSelected = new Set([...billSelected].filter(id=>billFiltered.some(o=>o.id===id)));
+
+  const tb=document.getElementById('bill-body');
+  const empty=document.getElementById('bill-empty');
+  tb.innerHTML='';
+
+  if(!billFiltered.length){ empty.style.display=''; updateBillBar(); return; }
+  empty.style.display='none';
+
+  billFiltered.forEach(o=>{
+    const checked = billSelected.has(o.id);
+    const itemsSummary = (o.items||[]).map(r=>r.name).filter(Boolean).join(', ');
+    const tr=document.createElement('tr');
+    if(checked) tr.classList.add('selected-row');
+    tr.innerHTML=`
+      <td class="c noprint"><input type="checkbox" ${checked?'checked':''} onchange="toggleBillRow('${o.id}',this.checked)"></td>
+      <td class="c">${o.id}</td>
+      <td class="c">${o.date}</td>
+      <td><b>${o.clientName||''}</b></td>
+      <td class="c">${o.plate||''}</td>
+      <td style="color:var(--muted);font-size:12px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${itemsSummary}</td>
+      <td class="r"><b>${fmt(o.total||0)}</b></td>
+      <td class="c"><span class="s${o.status||0}">${STATUSES[o.status||0]}</span></td>`;
+    tr.style.cursor='pointer';
+    tr.addEventListener('click', e=>{ if(e.target.type!=='checkbox'){ toggleBillRow(o.id, !billSelected.has(o.id)); renderBilling(); }});
+    tb.appendChild(tr);
+  });
+
+  updateBillBar();
+  // 전체선택 체크박스 상태
+  const allChk=document.getElementById('bill-check-all');
+  if(allChk){
+    allChk.checked = billFiltered.length>0 && billFiltered.every(o=>billSelected.has(o.id));
+    allChk.indeterminate = !allChk.checked && billFiltered.some(o=>billSelected.has(o.id));
+  }
+}
+
+function toggleBillRow(id, checked){
+  if(checked) billSelected.add(id); else billSelected.delete(id);
+  renderBilling();
+}
+
+function toggleAllBill(chk){ if(chk.checked) selectAllBill(); else deselectAllBill(); }
+function selectAllBill(){ billFiltered.forEach(o=>billSelected.add(o.id)); renderBilling(); }
+function deselectAllBill(){ billSelected.clear(); renderBilling(); }
+
+function updateBillBar(){
+  const n = billSelected.size;
+  const selOrders = loadOrders().filter(o=>billSelected.has(o.id));
+  const total = selOrders.reduce((a,o)=>a+(o.total||0),0);
+  const bar=document.getElementById('bill-sel-bar');
+  const info=document.getElementById('bill-sel-info');
+  const totEl=document.getElementById('bill-sel-total');
+  const btn=document.getElementById('bill-gen-btn');
+  if(n===0){
+    bar.classList.add('empty-sel');
+    info.textContent='조회된 주문에서 청구할 건을 선택하세요';
+    totEl.style.display='none';
+    btn.disabled=true; btn.style.opacity='.4';
+  } else {
+    bar.classList.remove('empty-sel');
+    info.textContent=`선택된 건수: ${n}건`;
+    totEl.style.display='';
+    totEl.textContent=fmt(total);
+    btn.disabled=false; btn.style.opacity='1';
+  }
+}
+
+function clearBillFilters(){
+  document.getElementById('bf-from').value='';
+  document.getElementById('bf-to').value='';
+  document.getElementById('bf-client').value='';
+  document.getElementById('bf-status').value='';
+  initBillingTab();
+}
+
+// ──────────── 청구서 생성 ────────────
+async function generateInvoice(){
+  if(billSelected.size===0){ alert('청구할 건을 선택해주세요.'); return; }
+  let allOrders; try { allOrders = await getOrders(); } catch(_){ return; }
+  const selected = allOrders.filter(o=>billSelected.has(o.id))
+    .sort((a,b)=>a.clientName.localeCompare(b.clientName,'ko')||a.date.localeCompare(b.date));
+
+  // 거래처별 그룹
+  const byClient = {};
+  selected.forEach(o=>{
+    const k = o.clientName||'(미지정)';
+    if(!byClient[k]) byClient[k] = [];
+    byClient[k].push(o);
+  });
+
+  const invoiceDate = today();
+  const fromDate = document.getElementById('bf-from').value || selected[0]?.date || '';
+  const toDate   = document.getElementById('bf-to').value   || selected[selected.length-1]?.date || '';
+  const grandSub   = selected.reduce((a,o)=>a+(o.sub||0),0);
+  const grandVat   = selected.reduce((a,o)=>a+(o.vat||0),0);
+  const grandTotal = selected.reduce((a,o)=>a+(o.total||0),0);
+
+  let html = `
+    <div class="doc-title">청 구 서</div>
+    <div class="bill-doc-period">청구일: ${invoiceDate} &nbsp;|&nbsp; 청구기간: ${fromDate} ~ ${toDate}</div>
+    <div class="doc-hdr">
+      <table>
+        <tr><td>공급자</td><td>${SUPPLIER.name}</td></tr>
+        <tr><td>사업자번호</td><td>${SUPPLIER.biz}</td></tr>
+        <tr><td>주소</td><td>${SUPPLIER.addr}</td></tr>
+        <tr><td>담당자</td><td>${selected[0]?.manager||'홍대현'} / ${SUPPLIER.tel}</td></tr>
+        <tr><td>계좌번호</td><td>${SUPPLIER.bank}</td></tr>
+      </table>
+      <table>
+        <tr><td>총 청구건수</td><td><b>${selected.length}건</b></td></tr>
+        <tr><td>총 공급가액</td><td>${fmt(grandSub)}</td></tr>
+        <tr><td>총 부가세</td><td>${fmt(grandVat)}</td></tr>
+        <tr><td>총 청구금액</td><td><b style="font-size:14px">${fmt(grandTotal)}</b></td></tr>
+      </table>
+    </div>`;
+
+  // 거래처별 섹션
+  let isFirst = true;
+  Object.entries(byClient).forEach(([clientName, orders])=>{
+    const cSub = orders.reduce((a,o)=>a+(o.sub||0),0);
+    const cVat = orders.reduce((a,o)=>a+(o.vat||0),0);
+    const cTotal = orders.reduce((a,o)=>a+(o.total||0),0);
+
+    if(!isFirst) html += '<div style="margin-top:20px"></div>';
+    isFirst = false;
+
+    html += `<div class="bill-doc-group-hd">▸ ${clientName} &nbsp;(${orders.length}건 / 합계 ${fmt(cTotal)})</div>`;
+    html += `<table class="doc-items">
+      <thead><tr>
+        <th style="width:36px">No</th>
+        <th style="width:120px">견적번호</th>
+        <th style="width:80px">일자</th>
+        <th style="width:80px">차량번호</th>
+        <th>부품 내역</th>
+        <th style="width:110px">공급가액</th>
+        <th style="width:90px">부가세</th>
+        <th style="width:120px">합계(VAT포함)</th>
+      </tr></thead><tbody>`;
+
+    orders.forEach((o,idx)=>{
+      const itemsSummary = (o.items||[]).map(r=>`${r.name}${r.qty>1?' x'+r.qty:''}`).filter(Boolean).join(', ');
+      html += `<tr>
+        <td class="c">${idx+1}</td>
+        <td class="c" style="font-size:11px">${o.id}</td>
+        <td class="c">${o.date}</td>
+        <td class="c">${o.plate||''}</td>
+        <td style="font-size:12px">${itemsSummary}</td>
+        <td class="r">${fmtN(o.sub||0)}</td>
+        <td class="r">${fmtN(o.vat||0)}</td>
+        <td class="r"><b>${fmtN(o.total||0)}</b></td>
+      </tr>`;
+    });
+
+    html += `<tr class="bill-doc-subtotal">
+      <td colspan="5" style="text-align:right">소계</td>
+      <td class="r">${fmtN(cSub)}</td>
+      <td class="r">${fmtN(cVat)}</td>
+      <td class="r">${fmtN(cTotal)}</td>
+    </tr></tbody></table>`;
+  });
+
+  // 합계
+  html += `<table class="doc-items" style="margin-top:12px">
+    <tr class="bill-doc-grandtotal">
+      <td colspan="5" style="text-align:right;padding:10px 14px">합 계 (${selected.length}건)</td>
+      <td class="r" style="width:110px">${fmtN(grandSub)}</td>
+      <td class="r" style="width:90px">${fmtN(grandVat)}</td>
+      <td class="r" style="width:120px">${fmtN(grandTotal)}</td>
+    </tr>
+  </table>`;
+
+  document.getElementById('print-area').innerHTML = html;
+  window.print();
+}
+
+// ──────────── 거래처 관리 ────────────
+async function renderClients(){
+  let clients=[], orders=[];
+  try { [clients, orders] = await Promise.all([getClients(), getOrders()]); } catch(_){ return; }
+  const tb=document.getElementById('clients-body');
+  const empty=document.getElementById('clients-empty');
+  tb.innerHTML='';
+  if(!clients.length){ empty.style.display=''; return; }
+  empty.style.display='none';
+  clients.forEach(c=>{
+    const cnt=orders.filter(o=>o.clientId===c.id).length;
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td><b>${c.name}</b></td><td>${c.addr||''}</td>
+      <td class="c">${c.tel||''}</td><td class="c">${cnt}건</td>
+      <td class="c noprint"><button class="btn red sm" onclick="deleteClient('${c.id}')">삭제</button></td>`;
+    tb.appendChild(tr);
+  });
+}
+
+async function addClient(){
+  const name=document.getElementById('nc-name').value.trim();
+  if(!name){ alert('업체명을 입력해주세요.'); return; }
+  const c={id:Date.now().toString(),name,addr:document.getElementById('nc-addr').value.trim(),tel:document.getElementById('nc-tel').value.trim()};
+  await withLoading('등록 중...', () => saveClientAPI(c));
+  document.getElementById('nc-name').value=''; document.getElementById('nc-addr').value=''; document.getElementById('nc-tel').value='';
+  const msg=document.getElementById('client-msg'); msg.textContent='✓ '+name+' 등록 완료';
+  setTimeout(()=>msg.textContent='',2500);
+  renderClients(); refreshClientDropdown();
+}
+
+async function deleteClient(id){
+  if(!confirm('삭제하겠습니까?')) return;
+  await withLoading('삭제 중...', () => deleteClientAPI(id));
+  renderClients(); refreshClientDropdown();
+}
+
+function openClientModal(){
+  ['mc-name','mc-addr','mc-tel'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('client-modal').classList.add('open');
+}
+function closeClientModal(){ document.getElementById('client-modal').classList.remove('open'); }
+async function addClientFromModal(){
+  const name=document.getElementById('mc-name').value.trim();
+  if(!name){ alert('업체명을 입력해주세요.'); return; }
+  const c={id:Date.now().toString(),name,addr:document.getElementById('mc-addr').value.trim(),tel:document.getElementById('mc-tel').value.trim()};
+  await withLoading('등록 중...', () => saveClientAPI(c));
+  await refreshClientDropdown();
+  document.getElementById('o-client').value=c.id; onClientSelect();
+  closeClientModal();
+}
+
+// ──────────── 유틸 ────────────
+function today(){ return new Date().toISOString().slice(0,10); }
+function lastDay(ym){ const d=new Date(ym+'-01'); d.setMonth(d.getMonth()+1); d.setDate(0); return d.toISOString().slice(0,10); }
+function fmt(n){ return Number(n||0).toLocaleString('ko-KR')+'원'; }
+function fmtN(n){ return Number(n||0).toLocaleString('ko-KR'); }
+function setText(id,v){ const el=document.getElementById(id); if(el) el.textContent=v; }
+
+// ──────────── 시작 ────────────
+(async () => {
+  if(!API_URL){
+    document.querySelector('header').insertAdjacentHTML('afterend',
+      `<div style="background:#d64545;color:#fff;padding:10px 22px;font-size:13px;font-weight:600;text-align:center">
+        ⚠️ Apps Script 배포 URL을 파일 상단 <code>API_URL</code>에 입력해야 사용할 수 있습니다.
+      </div>`);
+    return;
+  }
+  await withLoading('데이터 불러오는 중...', async () => {
+    await Promise.all([getOrders(), getClients()]);
+  });
+  await initOrder();
+})();
+</script>
+</body>
+</html>
