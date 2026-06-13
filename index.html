@@ -477,7 +477,11 @@ async function withLoading(msg, fn) {
 
 // ──────────── 데이터 접근 (캐시 + API) ────────────
 async function getOrders() {
-  if (!_cache.orders) _cache.orders = await apiGet('getOrders');
+  if (!_cache.orders) {
+    const data = await apiGet('getOrders');
+    data.forEach(o => { o.date = fmtDate(o.date); }); // 날짜를 YYYY-MM-DD로 정규화(시간·시간대 제거)
+    _cache.orders = data;
+  }
   return _cache.orders;
 }
 async function getClients() {
@@ -590,7 +594,7 @@ function renderRows(){
     tr.innerHTML = `
       <td class="c">${i+1}</td>
       <td><input value="${r.name||''}" oninput="rows[${i}].name=this.value" placeholder="부품명"
-            onkeydown="if(event.key==='Enter'){event.preventDefault();focusNextItemName(${i});}"></td>
+            onkeydown="if(event.key==='Enter'&&!event.isComposing&&event.keyCode!==229){event.preventDefault();focusNextItemName(${i});}"></td>
       <td><input class="num" type="number" min="1" value="${r.qty||1}" oninput="rows[${i}].qty=+this.value||1;calcTotals()"></td>
       <td><input class="num" inputmode="numeric" value="${r.price?fmtN(r.price):''}" placeholder="0" oninput="onPriceInput(this,${i})"></td>
       <td class="r" id="rt-${i}">${fmt((r.qty||1)*(r.price||0))}</td>
@@ -764,7 +768,7 @@ function renderModalRows(){
     tr.innerHTML=`
       <td class="c">${i+1}</td>
       <td><input value="${r.name||''}" oninput="modalRows[${i}].name=this.value"
-            onkeydown="if(event.key==='Enter'){event.preventDefault();focusNextModalItemName(${i});}"></td>
+            onkeydown="if(event.key==='Enter'&&!event.isComposing&&event.keyCode!==229){event.preventDefault();focusNextModalItemName(${i});}"></td>
       <td><input class="num" type="number" min="1" value="${r.qty||1}" oninput="modalRows[${i}].qty=+this.value||1;calcModalTotals()"></td>
       <td><input class="num" inputmode="numeric" value="${r.price?fmtN(r.price):''}" placeholder="0" oninput="onModalPriceInput(this,${i})"></td>
       <td class="r" id="mr-${i}">${fmt((r.qty||1)*(r.price||0))}</td>
@@ -1041,23 +1045,23 @@ async function generateInvoice(){
     html += `<div class="bill-doc-group-hd">▸ ${clientName} &nbsp;(${orders.length}건 / 합계 ${fmt(cTotal)})</div>`;
     html += `<table class="doc-items">
       <thead><tr>
-        <th style="width:36px">No</th>
-        <th style="width:120px">견적번호</th>
-        <th style="width:80px">일자</th>
+        <th style="width:32px">No</th>
+        <th style="width:92px">주문일자</th>
         <th style="width:80px">차량번호</th>
+        <th style="width:120px">차종</th>
         <th>부품 내역</th>
-        <th style="width:110px">공급가액</th>
-        <th style="width:90px">부가세</th>
-        <th style="width:120px">합계(VAT포함)</th>
+        <th style="width:100px">공급가액</th>
+        <th style="width:82px">부가세</th>
+        <th style="width:110px">합계(VAT포함)</th>
       </tr></thead><tbody>`;
 
     orders.forEach((o,idx)=>{
       const itemsSummary = (o.items||[]).map(r=>`${r.name}${r.qty>1?' x'+r.qty:''}`).filter(Boolean).join(', ');
       html += `<tr>
         <td class="c">${idx+1}</td>
-        <td class="c" style="font-size:11px">${o.id}</td>
-        <td class="c">${o.date}</td>
-        <td class="c">${o.plate||''}</td>
+        <td class="c" style="white-space:nowrap">${o.date}</td>
+        <td class="c" style="white-space:nowrap">${o.plate||''}</td>
+        <td style="white-space:nowrap">${o.model||o.brand||''}</td>
         <td style="font-size:12px">${itemsSummary}</td>
         <td class="r">${fmtN(o.sub||0)}</td>
         <td class="r">${fmtN(o.vat||0)}</td>
@@ -1182,7 +1186,16 @@ async function saveClientEdit(){
 }
 
 // ──────────── 유틸 ────────────
-function today(){ return new Date().toISOString().slice(0,10); }
+function today(){ return new Date().toLocaleDateString('sv-SE',{timeZone:'Asia/Seoul'}); }
+// 날짜를 YYYY-MM-DD로 통일 (구글시트가 날짜를 시간/시간대 붙은 값으로 돌려주는 경우 보정)
+function fmtDate(d){
+  if(!d) return '';
+  const s=String(d);
+  if(/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  const dt=new Date(s);
+  if(isNaN(dt.getTime())) return s.slice(0,10);
+  return dt.toLocaleDateString('sv-SE',{timeZone:'Asia/Seoul'});
+}
 function lastDay(ym){ const d=new Date(ym+'-01'); d.setMonth(d.getMonth()+1); d.setDate(0); return d.toISOString().slice(0,10); }
 function fmt(n){ return Number(n||0).toLocaleString('ko-KR')+'원'; }
 function fmtN(n){ return Number(n||0).toLocaleString('ko-KR'); }
