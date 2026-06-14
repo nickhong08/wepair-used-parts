@@ -208,10 +208,10 @@
       <div><label>브랜드</label>
         <input id="o-brand" list="brand-list" placeholder="선택 또는 직접 입력" autocomplete="off">
         <datalist id="brand-list">
-          <option value="MB (벤츠)"></option><option value="BMW"></option><option value="AUDI"></option><option value="VW"></option>
-          <option value="LEXUS"></option><option value="TOYOTA"></option><option value="HONDA"></option><option value="NISSAN"></option>
-          <option value="PORSCHE"></option><option value="VOLVO"></option><option value="JAGUAR"></option><option value="LANDROVER"></option>
-          <option value="TESLA"></option><option value="현대"></option><option value="기아"></option><option value="제네시스"></option><option value="기타"></option>
+          <option value="벤츠"></option><option value="BMW"></option><option value="아우디"></option><option value="폭스바겐"></option>
+          <option value="렉서스"></option><option value="토요타"></option><option value="혼다"></option><option value="닛산"></option>
+          <option value="포르쉐"></option><option value="볼보"></option><option value="재규어"></option><option value="랜드로버"></option>
+          <option value="테슬라"></option><option value="현대"></option><option value="기아"></option><option value="제네시스"></option><option value="기타"></option>
         </datalist>
       </div>
       <div><label>차량정보 (차종)</label><input id="o-model" placeholder="예) S350 BlueTEC 4MATIC"></div>
@@ -347,11 +347,12 @@
     <h2>새 거래처 등록</h2>
     <div class="grid g3" style="margin-bottom:12px">
       <div><label>업체명 *</label><input id="nc-name" placeholder="예) 지에스리스토어"></div>
-      <div><label>사업자번호</label><input id="nc-biz" placeholder="000-00-00000"></div>
-      <div><label>담당자 연락처</label><input id="nc-tel" placeholder="010-0000-0000"></div>
+      <div><label>사업자번호</label><input id="nc-biz" placeholder="000-00-00000" inputmode="numeric" maxlength="12" oninput="this.value=fmtBiz(this.value)"></div>
+      <div><label>담당자 연락처</label><input id="nc-tel" placeholder="010-0000-0000" inputmode="numeric" maxlength="13" oninput="this.value=fmtPhone(this.value)"></div>
       <div><label>주소</label><input id="nc-addr" placeholder="예) 경기도 파주시..."></div>
       <div><label>이메일</label><input id="nc-email" placeholder="example@email.com"></div>
-      <div><label>은행/계좌번호</label><input id="nc-bank" placeholder="하나은행 000-000000-00000"></div>
+      <div><label>은행</label><input id="nc-bank" placeholder="예) 하나은행"></div>
+      <div><label>계좌번호</label><input id="nc-account" placeholder="000-000000-00000"></div>
     </div>
     <button class="btn" onclick="addClient()">＋ 등록</button>
     <span id="client-msg" style="font-size:12px;color:var(--ok);margin-left:10px"></span>
@@ -387,11 +388,12 @@
     <div class="modal-b">
       <div class="grid" style="gap:12px">
         <div><label>업체명 *</label><input id="mc-name"></div>
-        <div><label>사업자번호</label><input id="mc-biz" placeholder="000-00-00000"></div>
-        <div><label>담당자 연락처</label><input id="mc-tel" placeholder="010-0000-0000"></div>
+        <div><label>사업자번호</label><input id="mc-biz" placeholder="000-00-00000" inputmode="numeric" maxlength="12" oninput="this.value=fmtBiz(this.value)"></div>
+        <div><label>담당자 연락처</label><input id="mc-tel" placeholder="010-0000-0000" inputmode="numeric" maxlength="13" oninput="this.value=fmtPhone(this.value)"></div>
         <div><label>주소</label><input id="mc-addr"></div>
         <div><label>이메일</label><input id="mc-email" placeholder="example@email.com"></div>
-        <div><label>은행/계좌번호</label><input id="mc-bank" placeholder="하나은행 000-000000-00000"></div>
+        <div><label>은행</label><input id="mc-bank" placeholder="예) 하나은행"></div>
+        <div><label>계좌번호</label><input id="mc-account" placeholder="000-000000-00000"></div>
       </div>
     </div>
     <div class="modal-f">
@@ -408,11 +410,12 @@
     <div class="modal-b">
       <div class="grid" style="gap:12px">
         <div><label>업체명 *</label><input id="ec-name"></div>
-        <div><label>사업자번호</label><input id="ec-biz" placeholder="000-00-00000"></div>
-        <div><label>담당자 연락처</label><input id="ec-tel" placeholder="010-0000-0000"></div>
+        <div><label>사업자번호</label><input id="ec-biz" placeholder="000-00-00000" inputmode="numeric" maxlength="12" oninput="this.value=fmtBiz(this.value)"></div>
+        <div><label>담당자 연락처</label><input id="ec-tel" placeholder="010-0000-0000" inputmode="numeric" maxlength="13" oninput="this.value=fmtPhone(this.value)"></div>
         <div><label>주소</label><input id="ec-addr"></div>
         <div><label>이메일</label><input id="ec-email" placeholder="example@email.com"></div>
-        <div><label>은행/계좌번호</label><input id="ec-bank" placeholder="하나은행 000-000000-00000"></div>
+        <div><label>은행</label><input id="ec-bank" placeholder="예) 하나은행"></div>
+        <div><label>계좌번호</label><input id="ec-account" placeholder="000-000000-00000"></div>
       </div>
     </div>
     <div class="modal-f">
@@ -1104,7 +1107,7 @@ async function renderClients(){
     const cnt=orders.filter(o=>String(o.clientId)===String(c.id)).length;
     const tr=document.createElement('tr');
     tr.innerHTML=`<td><b>${c.name}</b></td><td class="c">${c.biz||''}</td><td>${c.addr||''}</td>
-      <td class="c">${c.tel||''}</td><td>${c.email||''}</td><td>${c.bank||''}</td><td class="c">${cnt}건</td>
+      <td class="c">${c.tel||''}</td><td>${c.email||''}</td><td>${[c.bank,c.account].filter(Boolean).join(' ')}</td><td class="c">${cnt}건</td>
       <td class="c noprint" style="white-space:nowrap">
         <button class="btn ghost sm" onclick="openClientEdit('${c.id}')">수정</button>
         <button class="btn red sm" onclick="deleteClient('${c.id}')">삭제</button>
@@ -1121,9 +1124,10 @@ async function addClient(){
     addr:document.getElementById('nc-addr').value.trim(),
     tel:document.getElementById('nc-tel').value.trim(),
     email:document.getElementById('nc-email').value.trim(),
-    bank:document.getElementById('nc-bank').value.trim()};
+    bank:document.getElementById('nc-bank').value.trim(),
+    account:document.getElementById('nc-account').value.trim()};
   await withLoading('등록 중...', () => saveClientAPI(c));
-  ['nc-name','nc-biz','nc-addr','nc-tel','nc-email','nc-bank'].forEach(id=>document.getElementById(id).value='');
+  ['nc-name','nc-biz','nc-addr','nc-tel','nc-email','nc-bank','nc-account'].forEach(id=>document.getElementById(id).value='');
   const msg=document.getElementById('client-msg'); msg.textContent='✓ '+name+' 등록 완료';
   setTimeout(()=>msg.textContent='',2500);
   renderClients(); refreshClientDropdown();
@@ -1136,7 +1140,7 @@ async function deleteClient(id){
 }
 
 function openClientModal(){
-  ['mc-name','mc-biz','mc-addr','mc-tel','mc-email','mc-bank'].forEach(id=>document.getElementById(id).value='');
+  ['mc-name','mc-biz','mc-addr','mc-tel','mc-email','mc-bank','mc-account'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('client-modal').classList.add('open');
 }
 function closeClientModal(){ document.getElementById('client-modal').classList.remove('open'); }
@@ -1148,7 +1152,8 @@ async function addClientFromModal(){
     addr:document.getElementById('mc-addr').value.trim(),
     tel:document.getElementById('mc-tel').value.trim(),
     email:document.getElementById('mc-email').value.trim(),
-    bank:document.getElementById('mc-bank').value.trim()};
+    bank:document.getElementById('mc-bank').value.trim(),
+    account:document.getElementById('mc-account').value.trim()};
   await withLoading('등록 중...', () => saveClientAPI(c));
   await refreshClientDropdown();
   document.getElementById('o-client').value=c.id; onClientSelect();
@@ -1168,6 +1173,7 @@ async function openClientEdit(id){
   document.getElementById('ec-tel').value  = c.tel||'';
   document.getElementById('ec-email').value= c.email||'';
   document.getElementById('ec-bank').value = c.bank||'';
+  document.getElementById('ec-account').value = c.account||'';
   document.getElementById('client-edit-modal').classList.add('open');
 }
 function closeClientEdit(){ document.getElementById('client-edit-modal').classList.remove('open'); editingClientId=null; }
@@ -1179,7 +1185,8 @@ async function saveClientEdit(){
             addr:document.getElementById('ec-addr').value.trim(),
             tel:document.getElementById('ec-tel').value.trim(),
             email:document.getElementById('ec-email').value.trim(),
-            bank:document.getElementById('ec-bank').value.trim() };
+            bank:document.getElementById('ec-bank').value.trim(),
+            account:document.getElementById('ec-account').value.trim() };
   await withLoading('저장 중...', () => saveClientAPI(c));
   closeClientEdit();
   renderClients(); refreshClientDropdown();
@@ -1200,6 +1207,27 @@ function lastDay(ym){ const d=new Date(ym+'-01'); d.setMonth(d.getMonth()+1); d.
 function fmt(n){ return Number(n||0).toLocaleString('ko-KR')+'원'; }
 function fmtN(n){ return Number(n||0).toLocaleString('ko-KR'); }
 function setText(id,v){ const el=document.getElementById(id); if(el) el.textContent=v; }
+// 사업자번호 자동 하이픈 (XXX-XX-XXXXX)
+function fmtBiz(v){
+  const d=String(v).replace(/[^0-9]/g,'').slice(0,10);
+  if(d.length<4) return d;
+  if(d.length<6) return d.slice(0,3)+'-'+d.slice(3);
+  return d.slice(0,3)+'-'+d.slice(3,5)+'-'+d.slice(5);
+}
+// 전화번호 자동 하이픈 (휴대폰 010-XXXX-XXXX, 서울 02 포함)
+function fmtPhone(v){
+  const d=String(v).replace(/[^0-9]/g,'').slice(0,11);
+  if(d.startsWith('02')){
+    if(d.length<3) return d;
+    if(d.length<6) return d.slice(0,2)+'-'+d.slice(2);
+    if(d.length<10) return d.slice(0,2)+'-'+d.slice(2,5)+'-'+d.slice(5);
+    return d.slice(0,2)+'-'+d.slice(2,6)+'-'+d.slice(6,10);
+  }
+  if(d.length<4) return d;
+  if(d.length<8) return d.slice(0,3)+'-'+d.slice(3);
+  if(d.length<11) return d.slice(0,3)+'-'+d.slice(3,6)+'-'+d.slice(6);
+  return d.slice(0,3)+'-'+d.slice(3,7)+'-'+d.slice(7);
+}
 
 // ──────────── ESC로 모달 닫기 ────────────
 document.addEventListener('keydown', function(e){
