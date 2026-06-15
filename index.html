@@ -1035,28 +1035,25 @@ async function generateInvoice(){
       </table>
     </div>`;
 
-  // 거래처별 섹션
-  let isFirst = true;
+  // 거래처별 섹션 — 전체를 하나의 표로 구성해 모든 컬럼이 정확히 정렬되게 함
+  html += `<table class="doc-items">
+    <thead><tr>
+      <th style="width:32px">No</th>
+      <th style="width:88px">주문일자</th>
+      <th style="width:84px">차량번호</th>
+      <th style="width:110px">차종</th>
+      <th>부품 내역</th>
+      <th style="width:96px">공급가액</th>
+      <th style="width:80px">부가세</th>
+      <th style="width:104px">합계(VAT포함)</th>
+    </tr></thead><tbody>`;
+
   Object.entries(byClient).forEach(([clientName, orders])=>{
     const cSub = orders.reduce((a,o)=>a+(o.sub||0),0);
     const cVat = orders.reduce((a,o)=>a+(o.vat||0),0);
     const cTotal = orders.reduce((a,o)=>a+(o.total||0),0);
 
-    if(!isFirst) html += '<div style="margin-top:20px"></div>';
-    isFirst = false;
-
-    html += `<div class="bill-doc-group-hd">▸ ${clientName} &nbsp;(${orders.length}건 / 합계 ${fmt(cTotal)})</div>`;
-    html += `<table class="doc-items">
-      <thead><tr>
-        <th style="width:32px">No</th>
-        <th style="width:92px">주문일자</th>
-        <th style="width:80px">차량번호</th>
-        <th style="width:120px">차종</th>
-        <th>부품 내역</th>
-        <th style="width:100px">공급가액</th>
-        <th style="width:82px">부가세</th>
-        <th style="width:110px">합계(VAT포함)</th>
-      </tr></thead><tbody>`;
+    html += `<tr><td colspan="8" class="bill-doc-group-hd" style="text-align:left">▸ ${clientName} &nbsp;(${orders.length}건 / 합계 ${fmt(cTotal)})</td></tr>`;
 
     orders.forEach((o,idx)=>{
       const itemsSummary = (o.items||[]).map(r=>`${r.name}${r.qty>1?' x'+r.qty:''}`).filter(Boolean).join(', ');
@@ -1064,8 +1061,8 @@ async function generateInvoice(){
         <td class="c">${idx+1}</td>
         <td class="c" style="white-space:nowrap">${o.date}</td>
         <td class="c" style="white-space:nowrap">${o.plate||''}</td>
-        <td style="white-space:nowrap">${[o.brand,o.model].filter(Boolean).join(' ')}</td>
-        <td style="font-size:12px">${itemsSummary}</td>
+        <td>${[o.brand,o.model].filter(Boolean).join(' ')}</td>
+        <td style="font-size:12px;word-break:break-all">${itemsSummary}</td>
         <td class="r">${fmtN(o.sub||0)}</td>
         <td class="r">${fmtN(o.vat||0)}</td>
         <td class="r"><b>${fmtN(o.total||0)}</b></td>
@@ -1077,18 +1074,15 @@ async function generateInvoice(){
       <td class="r">${fmtN(cSub)}</td>
       <td class="r">${fmtN(cVat)}</td>
       <td class="r">${fmtN(cTotal)}</td>
-    </tr></tbody></table>`;
+    </tr>`;
   });
 
-  // 합계
-  html += `<table class="doc-items" style="margin-top:12px">
-    <tr class="bill-doc-grandtotal">
+  html += `<tr class="bill-doc-grandtotal">
       <td colspan="5" style="text-align:right;padding:10px 14px">합 계 (${selected.length}건)</td>
-      <td class="r" style="width:110px">${fmtN(grandSub)}</td>
-      <td class="r" style="width:90px">${fmtN(grandVat)}</td>
-      <td class="r" style="width:120px">${fmtN(grandTotal)}</td>
-    </tr>
-  </table>`;
+      <td class="r">${fmtN(grandSub)}</td>
+      <td class="r">${fmtN(grandVat)}</td>
+      <td class="r">${fmtN(grandTotal)}</td>
+    </tr></tbody></table>`;
 
   document.getElementById('print-area').innerHTML = html;
   window.print();
