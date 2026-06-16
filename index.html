@@ -166,6 +166,7 @@
   <button data-tab="order" class="active">＋ 주문 입력</button>
   <button data-tab="list">주문 대장</button>
   <button data-tab="billing">청구 관리</button>
+  <button data-tab="invoices">청구 내역</button>
   <button data-tab="clients">거래처 관리</button>
 </nav>
 
@@ -183,8 +184,6 @@
         <select id="o-status">
           <option value="0">견적요청</option>
           <option value="1">주문확정</option>
-          <option value="2">청구대기</option>
-          <option value="3">청구완료</option>
         </select>
       </div>
     </div>
@@ -267,8 +266,6 @@
         <option value="">전체</option>
         <option value="0">견적요청</option>
         <option value="1">주문확정</option>
-        <option value="2">청구대기</option>
-        <option value="3">청구완료</option>
       </select>
     </div>
     <button class="btn sm ghost" onclick="clearFilters()">초기화</button>
@@ -291,22 +288,13 @@
 
   <!-- 필터 -->
   <div class="card noprint">
-    <h2>조회 조건</h2>
+    <h2>청구 대상 조회 <span style="font-weight:600;font-size:12px;color:var(--muted)">— 주문확정 · 미청구 건만 표시됩니다</span></h2>
     <div class="search-bar" style="margin-bottom:0">
       <div class="sf"><label>시작일</label><input id="bf-from" type="date" onchange="renderBilling()"></div>
       <div class="sf"><label>종료일</label><input id="bf-to" type="date" onchange="renderBilling()"></div>
       <div class="sf"><label>거래처</label>
         <select id="bf-client" onchange="renderBilling()">
           <option value="">전체</option>
-        </select>
-      </div>
-      <div class="sf"><label>상태</label>
-        <select id="bf-status" onchange="renderBilling()">
-          <option value="">전체</option>
-          <option value="0">견적요청</option>
-          <option value="1">주문확정</option>
-          <option value="2">청구대기</option>
-          <option value="3">청구완료</option>
         </select>
       </div>
       <button class="btn sm ghost" onclick="clearBillFilters()">초기화</button>
@@ -339,6 +327,44 @@
     <div id="bill-empty" class="empty" style="display:none">조회 결과가 없습니다.</div>
   </div>
 
+</div>
+
+<!-- ══════════════ 청구 내역 ══════════════ -->
+<div id="tab-invoices" class="tab">
+  <div class="card noprint">
+    <h2>청구 내역</h2>
+    <div class="search-bar" style="margin-bottom:0">
+      <div class="sf"><label>거래처</label>
+        <select id="if-client" onchange="renderInvoices()"><option value="">전체</option></select>
+      </div>
+      <div class="sf"><label>청구여부</label>
+        <select id="if-billed" onchange="renderInvoices()">
+          <option value="">전체</option>
+          <option value="미청구">미청구</option>
+          <option value="청구함">청구함</option>
+        </select>
+      </div>
+      <div class="sf"><label>입금상태</label>
+        <select id="if-paid" onchange="renderInvoices()">
+          <option value="">전체</option>
+          <option value="미결">미결</option>
+          <option value="종결">종결</option>
+        </select>
+      </div>
+      <button class="btn sm ghost" onclick="clearInvoiceFilters()">초기화</button>
+    </div>
+  </div>
+  <div id="inv-summary" class="noprint" style="font-size:13px;color:var(--navy);margin-bottom:10px;font-weight:700"></div>
+  <div class="card" style="padding:0;overflow:hidden">
+    <table>
+      <thead>
+        <tr><th>청구서번호</th><th>생성일</th><th>거래처</th><th>청구기간</th>
+        <th class="r">청구금액</th><th>청구여부</th><th>입금상태</th><th class="r">입금액</th><th class="noprint">관리</th></tr>
+      </thead>
+      <tbody id="inv-body"></tbody>
+    </table>
+    <div id="inv-empty" class="empty" style="display:none">생성된 청구서가 없습니다.</div>
+  </div>
 </div>
 
 <!-- ══════════════ 거래처 관리 ══════════════ -->
@@ -425,6 +451,20 @@
   </div>
 </div>
 
+<!-- ══════════════ 청구서 관리 모달 ══════════════ -->
+<div class="modal-bg" id="invoice-modal">
+  <div class="modal">
+    <div class="modal-h"><span id="iv-modal-title">청구서</span><button onclick="closeInvoiceModal()">✕</button></div>
+    <div class="modal-b" id="iv-modal-body"></div>
+    <div class="modal-f">
+      <button class="btn red" onclick="deleteCurrentInvoice()" style="margin-right:auto">삭제</button>
+      <button class="btn ghost" onclick="printCurrentInvoice()">🖨 청구서 출력</button>
+      <button class="btn" onclick="saveInvoiceModal()">저장</button>
+      <button class="btn gray" onclick="closeInvoiceModal()">닫기</button>
+    </div>
+  </div>
+</div>
+
 <!-- ══════════════ 로딩 오버레이 ══════════════ -->
 <div id="loading-overlay" style="display:none;position:fixed;inset:0;background:#0006;z-index:9999;align-items:center;justify-content:center;flex-direction:column;gap:12px;color:#fff">
   <div style="width:36px;height:36px;border:4px solid #fff4;border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite"></div>
@@ -437,7 +477,11 @@
 
 <script>
 // ──────────── 상수 ────────────
-const STATUSES = ['견적요청','주문확정','청구대기','청구완료'];
+const STATUSES = ['견적요청','주문확정'];
+// 기존 데이터의 옛 상태값(2:청구대기,3:청구완료)은 주문확정으로 표시
+function statusIdx(s){ s=parseInt(s)||0; return s>1?1:s; }
+function statusLabel(s){ return STATUSES[statusIdx(s)]; }
+function statusCls(s){ return 's'+statusIdx(s); }
 const SUPPLIER = {
   name:'주식회사 위페어', biz:'178-88-03012',
   addr:'서울특별시 관악구 호암로22길 32, 5층 502호',
@@ -449,7 +493,7 @@ const SUPPLIER = {
 const API_URL = 'https://script.google.com/macros/s/AKfycbz5pyW0otbh3XKRRVp2QO_yN5Nw_MIAEc8L5FFrh6QqhgtnTVYP-JD6sDArGdEYq-AA/exec';
 
 // ──────────── 캐시 ────────────
-const _cache = { orders: null, clients: null };
+const _cache = { orders: null, clients: null, invoices: null };
 
 // ──────────── API 래퍼 ────────────
 async function apiGet(action) {
@@ -507,6 +551,18 @@ async function deleteClientAPI(id) {
   await apiPost({ action: 'deleteClient', id });
   _cache.clients = null;
 }
+async function getInvoices() {
+  if (!_cache.invoices) _cache.invoices = await apiGet('getInvoices');
+  return _cache.invoices;
+}
+async function saveInvoiceAPI(inv) {
+  await apiPost({ action: 'saveInvoice', record: inv });
+  _cache.invoices = null;
+}
+async function deleteInvoiceAPI(id) {
+  await apiPost({ action: 'deleteInvoice', id });
+  _cache.invoices = null;
+}
 
 // ──────────── 견적번호 ────────────
 async function genId(){
@@ -527,16 +583,19 @@ async function genId(){
 }
 
 // ──────────── 탭 ────────────
+function switchTab(name){
+  document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('active', b.dataset.tab===name));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  if(name==='list')     renderList();
+  if(name==='billing')  initBillingTab();
+  if(name==='invoices') initInvoicesTab();
+  if(name==='clients')  renderClients();
+}
 document.querySelectorAll('nav button').forEach(btn=>{
   btn.addEventListener('click',()=>{
     if(!API_URL){ alert('상단 스크립트의 API_URL을 먼저 입력해주세요.'); return; }
-    document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
-    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
-    btn.classList.add('active');
-    document.getElementById('tab-'+btn.dataset.tab).classList.add('active');
-    if(btn.dataset.tab==='list')    renderList();
-    if(btn.dataset.tab==='billing') initBillingTab();
-    if(btn.dataset.tab==='clients') renderClients();
+    switchTab(btn.dataset.tab);
   });
 });
 
@@ -693,7 +752,7 @@ async function renderList(){
       <td>${o.clientName||''}</td><td class="c">${o.plate||''}</td>
       <td>${o.model||o.brand||''}</td>
       <td class="r">${fmt(o.total||0)}</td>
-      <td class="c"><span class="s${o.status||0}">${STATUSES[o.status||0]}</span></td>
+      <td class="c"><span class="${statusCls(o.status)}">${statusLabel(o.status)}</span></td>
       <td class="c noprint" style="white-space:nowrap">
         <button class="btn ghost sm" onclick="event.stopPropagation();openEditModal('${o.id}')">수정</button>
         <button class="btn gray sm" onclick="event.stopPropagation();deleteOrder('${o.id}')">삭제</button>
@@ -736,7 +795,7 @@ async function openEditModal(id){
     <div class="grid g2" style="margin-bottom:12px">
       <div><label>거래처</label><select id="em-client">${cOpts}</select></div>
       <div><label>상태</label><select id="em-status">
-        ${STATUSES.map((s,i)=>`<option value="${i}" ${(order.status??0)===i?'selected':''}>${s}</option>`).join('')}
+        ${STATUSES.map((s,i)=>`<option value="${i}" ${statusIdx(order.status)===i?'selected':''}>${s}</option>`).join('')}
       </select></div>
     </div>
     <div class="grid g4" style="margin-bottom:12px">
@@ -905,17 +964,17 @@ async function renderBilling(){
   const fF=document.getElementById('bf-from').value;
   const fT=document.getElementById('bf-to').value;
   const fC=document.getElementById('bf-client').value;
-  const fS=document.getElementById('bf-status').value;
 
   let allOrders; try { allOrders = await getOrders(); } catch(_){ return; }
 
   billFiltered = allOrders.filter(o=>{
+    if(statusIdx(o.status)!==1) return false;   // 주문확정만
+    if(o.invoiceId) return false;               // 이미 청구서에 묶인 건 제외
     if(fF && o.date<fF) return false;
     if(fT && o.date>fT) return false;
     if(fC && String(o.clientId)!==String(fC)) return false;
-    if(fS!=='' && String(o.status)!==fS) return false;
     return true;
-  }).sort((a,b)=>a.date.localeCompare(b.date)||a.id.localeCompare(b.id));
+  }).sort((a,b)=>String(a.date).localeCompare(String(b.date))||String(a.id).localeCompare(String(b.id)));
 
   // 더 이상 목록에 없는 선택 제거
   billSelected = new Set([...billSelected].filter(id=>billFiltered.some(o=>o.id===id)));
@@ -940,7 +999,7 @@ async function renderBilling(){
       <td class="c">${o.plate||''}</td>
       <td style="color:var(--muted);font-size:12px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${itemsSummary}</td>
       <td class="r"><b>${fmt(o.total||0)}</b></td>
-      <td class="c"><span class="s${o.status||0}">${STATUSES[o.status||0]}</span></td>`;
+      <td class="c"><span class="${statusCls(o.status)}">${statusLabel(o.status)}</span></td>`;
     tr.style.cursor='pointer';
     tr.addEventListener('click', e=>{ if(e.target.type!=='checkbox'){ toggleBillRow(o.id, !billSelected.has(o.id)); renderBilling(); }});
     tb.appendChild(tr);
@@ -990,102 +1049,240 @@ function clearBillFilters(){
   document.getElementById('bf-from').value='';
   document.getElementById('bf-to').value='';
   document.getElementById('bf-client').value='';
-  document.getElementById('bf-status').value='';
   initBillingTab();
 }
 
-// ──────────── 청구서 생성 ────────────
+// ──────────── 청구서 생성 (선택 → 거래처별 청구서 레코드 생성) ────────────
 async function generateInvoice(){
   if(billSelected.size===0){ alert('청구할 건을 선택해주세요.'); return; }
   let allOrders; try { allOrders = await getOrders(); } catch(_){ return; }
-  const selected = allOrders.filter(o=>billSelected.has(o.id))
-    .sort((a,b)=>a.clientName.localeCompare(b.clientName,'ko')||a.date.localeCompare(b.date));
+  const selected = allOrders.filter(o=>billSelected.has(o.id) && statusIdx(o.status)===1 && !o.invoiceId);
+  if(!selected.length){ alert('청구 가능한(주문확정·미청구) 건이 없습니다.'); return; }
 
-  // 거래처별 그룹
+  // 거래처별 그룹 (청구서는 거래처 단위로 생성)
   const byClient = {};
-  selected.forEach(o=>{
-    const k = o.clientName||'(미지정)';
-    if(!byClient[k]) byClient[k] = [];
-    byClient[k].push(o);
+  selected.forEach(o=>{ const k=String(o.clientId||''); (byClient[k]=byClient[k]||[]).push(o); });
+  const groups = Object.values(byClient);
+
+  if(!confirm(`선택한 ${selected.length}건으로 청구서 ${groups.length}건을 생성하시겠습니까?\n(거래처별로 각각 생성되며, 생성된 주문은 청구 목록에서 빠집니다)`)) return;
+
+  await withLoading('청구서 생성 중...', async ()=>{
+    const d = new Date().toLocaleDateString('sv-SE',{timeZone:'Asia/Seoul'}).replace(/-/g,'');
+    let maxSeq = 0;
+    try { (await getInvoices()).forEach(v=>{ const id=String(v.id||''); if(id.includes('INV-'+d)){ const s=parseInt(id.split('-').pop()||'0'); if(s>maxSeq) maxSeq=s; } }); } catch(_){}
+
+    for(const orders of groups){
+      maxSeq++;
+      const invId = 'INV-'+d+'-'+String(maxSeq).padStart(3,'0');
+      const sub=orders.reduce((a,o)=>a+(o.sub||0),0);
+      const vat=orders.reduce((a,o)=>a+(o.vat||0),0);
+      const total=orders.reduce((a,o)=>a+(o.total||0),0);
+      const dates=orders.map(o=>o.date).filter(Boolean).sort();
+      const inv = {
+        id:invId, date:today(),
+        clientId:orders[0].clientId||'', clientName:orders[0].clientName||'(미지정)',
+        periodFrom:dates[0]||'', periodTo:dates[dates.length-1]||'',
+        orderIds:orders.map(o=>o.id),
+        sub, vat, total,
+        billed:'미청구', billedDate:'', paidStatus:'미결', paidDate:'', paidAmount:0, note:''
+      };
+      await saveInvoiceAPI(inv);
+      for(const o of orders){ await saveOrderAPI(Object.assign({}, o, {invoiceId:invId})); }
+    }
   });
 
-  const invoiceDate = today();
-  const fromDate = document.getElementById('bf-from').value || selected[0]?.date || '';
-  const toDate   = document.getElementById('bf-to').value   || selected[selected.length-1]?.date || '';
-  const grandSub   = selected.reduce((a,o)=>a+(o.sub||0),0);
-  const grandVat   = selected.reduce((a,o)=>a+(o.vat||0),0);
-  const grandTotal = selected.reduce((a,o)=>a+(o.total||0),0);
+  billSelected.clear();
+  alert(`청구서 ${groups.length}건이 생성되었습니다. '청구 내역' 탭에서 청구/입금을 관리하세요.`);
+  switchTab('invoices');
+}
 
+// 청구서 1건의 출력 HTML 생성 (청구 내역에서 재인쇄에 사용)
+function buildInvoicePrintHTML(inv, orders){
+  const sub=inv.sub||0, vat=inv.vat||0, total=inv.total||0;
   let html = `
     <div class="doc-title">청 구 서</div>
-    <div class="bill-doc-period">청구일: ${invoiceDate} &nbsp;|&nbsp; 청구기간: ${fromDate} ~ ${toDate}</div>
+    <div class="bill-doc-period">청구서번호: ${inv.id} &nbsp;|&nbsp; 청구일: ${fmtDate(inv.date)} &nbsp;|&nbsp; 청구기간: ${inv.periodFrom||''} ~ ${inv.periodTo||''}</div>
     <div class="doc-hdr">
       <table>
         <tr><td>공급자</td><td>${SUPPLIER.name}</td></tr>
         <tr><td>사업자번호</td><td>${SUPPLIER.biz}</td></tr>
         <tr><td>주소</td><td>${SUPPLIER.addr}</td></tr>
-        <tr><td>담당자</td><td>${selected[0]?.manager||'홍대현'} / ${SUPPLIER.tel}</td></tr>
+        <tr><td>담당자</td><td>홍대현 / ${SUPPLIER.tel}</td></tr>
         <tr><td>계좌번호</td><td>${SUPPLIER.bank}</td></tr>
       </table>
       <table>
-        <tr><td>총 청구건수</td><td><b>${selected.length}건</b></td></tr>
-        <tr><td>총 공급가액</td><td>${fmt(grandSub)}</td></tr>
-        <tr><td>총 부가세</td><td>${fmt(grandVat)}</td></tr>
-        <tr><td>총 청구금액</td><td><b style="font-size:14px">${fmt(grandTotal)}</b></td></tr>
+        <tr><td>거래처</td><td><b>${inv.clientName||''}</b></td></tr>
+        <tr><td>총 청구건수</td><td>${orders.length}건</td></tr>
+        <tr><td>총 공급가액</td><td>${fmt(sub)}</td></tr>
+        <tr><td>총 부가세</td><td>${fmt(vat)}</td></tr>
+        <tr><td>총 청구금액</td><td><b style="font-size:14px">${fmt(total)}</b></td></tr>
       </table>
-    </div>`;
-
-  // 거래처별 섹션 — 전체를 하나의 표로 구성해 모든 컬럼이 정확히 정렬되게 함
-  html += `<table class="doc-items">
-    <thead><tr>
-      <th style="width:32px">No</th>
-      <th style="width:88px">주문일자</th>
-      <th style="width:84px">차량번호</th>
-      <th style="width:110px">차종</th>
-      <th>부품 내역</th>
-      <th style="width:96px">공급가액</th>
-      <th style="width:80px">부가세</th>
-      <th style="width:104px">합계(VAT포함)</th>
-    </tr></thead><tbody>`;
-
-  Object.entries(byClient).forEach(([clientName, orders])=>{
-    const cSub = orders.reduce((a,o)=>a+(o.sub||0),0);
-    const cVat = orders.reduce((a,o)=>a+(o.vat||0),0);
-    const cTotal = orders.reduce((a,o)=>a+(o.total||0),0);
-
-    html += `<tr><td colspan="8" class="bill-doc-group-hd" style="text-align:left">▸ ${clientName} &nbsp;(${orders.length}건 / 합계 ${fmt(cTotal)})</td></tr>`;
-
-    orders.forEach((o,idx)=>{
-      const itemsSummary = (o.items||[]).map(r=>`${r.name}${r.qty>1?' x'+r.qty:''}`).filter(Boolean).join(', ');
-      html += `<tr>
-        <td class="c">${idx+1}</td>
-        <td class="c" style="white-space:nowrap">${o.date}</td>
-        <td class="c" style="white-space:nowrap">${o.plate||''}</td>
-        <td>${[o.brand,o.model].filter(Boolean).join(' ')}</td>
-        <td style="font-size:12px;word-break:break-all">${itemsSummary}</td>
-        <td class="r">${fmtN(o.sub||0)}</td>
-        <td class="r">${fmtN(o.vat||0)}</td>
-        <td class="r"><b>${fmtN(o.total||0)}</b></td>
+    </div>
+    <table class="doc-items"><tbody>
+      <tr><td colspan="8" class="bill-doc-group-hd" style="text-align:left">▸ ${inv.clientName||''} &nbsp;(${orders.length}건 / 합계 ${fmt(total)})</td></tr>
+      <tr>
+        <th style="width:32px">No</th><th style="width:88px">주문일자</th><th style="width:84px">차량번호</th>
+        <th style="width:110px">차종</th><th>부품 내역</th>
+        <th style="width:96px">공급가액</th><th style="width:80px">부가세</th><th style="width:104px">합계(VAT포함)</th>
       </tr>`;
-    });
-
-    html += `<tr class="bill-doc-subtotal">
-      <td colspan="5" style="text-align:right">소계</td>
-      <td class="r">${fmtN(cSub)}</td>
-      <td class="r">${fmtN(cVat)}</td>
-      <td class="r">${fmtN(cTotal)}</td>
+  orders.forEach((o,idx)=>{
+    const itemsSummary = (o.items||[]).map(r=>`${r.name}${r.qty>1?' x'+r.qty:''}`).filter(Boolean).join(', ');
+    html += `<tr>
+      <td class="c">${idx+1}</td>
+      <td class="c" style="white-space:nowrap">${fmtDate(o.date)}</td>
+      <td class="c" style="white-space:nowrap">${o.plate||''}</td>
+      <td>${[o.brand,o.model].filter(Boolean).join(' ')}</td>
+      <td style="font-size:12px;word-break:break-all">${itemsSummary}</td>
+      <td class="r">${fmtN(o.sub||0)}</td>
+      <td class="r">${fmtN(o.vat||0)}</td>
+      <td class="r"><b>${fmtN(o.total||0)}</b></td>
     </tr>`;
   });
-
   html += `<tr class="bill-doc-grandtotal">
-      <td colspan="5" style="text-align:right;padding:10px 14px">합 계 (${selected.length}건)</td>
-      <td class="r">${fmtN(grandSub)}</td>
-      <td class="r">${fmtN(grandVat)}</td>
-      <td class="r">${fmtN(grandTotal)}</td>
+      <td colspan="5" style="text-align:right;padding:10px 14px">합 계 (${orders.length}건)</td>
+      <td class="r">${fmtN(sub)}</td>
+      <td class="r">${fmtN(vat)}</td>
+      <td class="r">${fmtN(total)}</td>
     </tr></tbody></table>`;
+  return html;
+}
 
-  document.getElementById('print-area').innerHTML = html;
+async function printInvoiceById(id){
+  let invs, allOrders; try { [invs, allOrders] = await Promise.all([getInvoices(), getOrders()]); } catch(_){ return; }
+  const inv=invs.find(v=>String(v.id)===String(id)); if(!inv) return;
+  const ids=(inv.orderIds||[]).map(String);
+  const orders=allOrders.filter(o=>ids.includes(String(o.id)));
+  document.getElementById('print-area').innerHTML = buildInvoicePrintHTML(inv, orders);
   window.print();
+}
+
+// ──────────── 청구 내역 ────────────
+let invFiltered = [];
+let modalInvoiceId = null;
+
+async function initInvoicesTab(){
+  const sel=document.getElementById('if-client'); const cur=sel.value;
+  sel.innerHTML='<option value="">전체</option>';
+  try { (await getClients()).forEach(c=>sel.appendChild(new Option(c.name, c.id))); } catch(_){}
+  sel.value=cur;
+  renderInvoices();
+}
+
+async function renderInvoices(){
+  const fC=document.getElementById('if-client').value;
+  const fB=document.getElementById('if-billed').value;
+  const fP=document.getElementById('if-paid').value;
+  let invs; try { invs = await getInvoices(); } catch(_){ return; }
+
+  invFiltered = invs.filter(v=>{
+    if(fC && String(v.clientId)!==String(fC)) return false;
+    if(fB && (v.billed||'미청구')!==fB) return false;
+    if(fP && (v.paidStatus||'미결')!==fP) return false;
+    return true;
+  }).sort((a,b)=>String(b.id).localeCompare(String(a.id)));
+
+  const totalSum=invFiltered.reduce((a,v)=>a+(v.total||0),0);
+  const paidSum=invFiltered.reduce((a,v)=>a+((v.paidStatus==='종결')?(v.total||0):0),0);
+  setText('inv-summary', `청구서 ${invFiltered.length}건 · 청구금액 ${fmt(totalSum)} · 입금완료(종결) ${fmt(paidSum)}`);
+
+  const tb=document.getElementById('inv-body'); const empty=document.getElementById('inv-empty');
+  tb.innerHTML='';
+  if(!invFiltered.length){ empty.style.display=''; return; }
+  empty.style.display='none';
+  invFiltered.forEach(v=>{
+    const billed=v.billed||'미청구', paid=v.paidStatus||'미결';
+    const billCls = billed==='청구함'?'s1':'s0';
+    const paidCls = paid==='종결'?'s3':'s2';
+    const tr=document.createElement('tr'); tr.style.cursor='pointer';
+    tr.innerHTML=`
+      <td class="c">${v.id}</td>
+      <td class="c">${fmtDate(v.date)}</td>
+      <td><b>${v.clientName||''}</b></td>
+      <td class="c" style="white-space:nowrap">${v.periodFrom||''} ~ ${v.periodTo||''}</td>
+      <td class="r"><b>${fmt(v.total||0)}</b></td>
+      <td class="c"><span class="${billCls}">${billed}</span></td>
+      <td class="c"><span class="${paidCls}">${paid}</span></td>
+      <td class="r">${v.paidAmount?fmt(v.paidAmount):'-'}</td>
+      <td class="c noprint"><button class="btn ghost sm" onclick="event.stopPropagation();openInvoiceModal('${v.id}')">관리</button></td>`;
+    tr.addEventListener('click',()=>openInvoiceModal(v.id));
+    tb.appendChild(tr);
+  });
+}
+
+function clearInvoiceFilters(){
+  ['if-client','if-billed','if-paid'].forEach(id=>document.getElementById(id).value='');
+  renderInvoices();
+}
+
+async function openInvoiceModal(id){
+  let invs, allOrders; try { [invs, allOrders] = await Promise.all([getInvoices(), getOrders()]); } catch(_){ return; }
+  const inv=invs.find(v=>String(v.id)===String(id)); if(!inv){ alert('청구서를 찾을 수 없습니다.'); return; }
+  modalInvoiceId=inv.id;
+  const ids=(inv.orderIds||[]).map(String);
+  const orders=allOrders.filter(o=>ids.includes(String(o.id)));
+  const billed=inv.billed||'미청구', paid=inv.paidStatus||'미결';
+  document.getElementById('iv-modal-title').textContent='청구서 — '+inv.id;
+  const rows=orders.map((o,i)=>`<tr><td class="c">${i+1}</td><td class="c">${fmtDate(o.date)}</td><td class="c">${o.plate||''}</td><td>${[o.brand,o.model].filter(Boolean).join(' ')}</td><td class="r">${fmt(o.total||0)}</td></tr>`).join('');
+  document.getElementById('iv-modal-body').innerHTML=`
+    <div class="grid g2" style="margin-bottom:12px">
+      <div><label>거래처</label><input value="${inv.clientName||''}" readonly style="background:#f0f3f7;color:var(--muted)"></div>
+      <div><label>청구기간</label><input value="${inv.periodFrom||''} ~ ${inv.periodTo||''}" readonly style="background:#f0f3f7;color:var(--muted)"></div>
+    </div>
+    <div class="grid g3" style="margin-bottom:12px">
+      <div><label>공급가액</label><input value="${fmt(inv.sub||0)}" readonly style="background:#f0f3f7;color:var(--muted)"></div>
+      <div><label>부가세</label><input value="${fmt(inv.vat||0)}" readonly style="background:#f0f3f7;color:var(--muted)"></div>
+      <div><label>청구금액(합계)</label><input value="${fmt(inv.total||0)}" readonly style="background:#f0f3f7;color:var(--navy);font-weight:700"></div>
+    </div>
+    <div class="grid g3" style="margin-bottom:8px">
+      <div><label>청구여부</label>
+        <select id="iv-billed">
+          <option value="미청구" ${billed==='미청구'?'selected':''}>미청구</option>
+          <option value="청구함" ${billed==='청구함'?'selected':''}>청구함</option>
+        </select>
+      </div>
+      <div><label>입금일</label><input id="iv-paiddate" type="date" value="${inv.paidDate||''}"></div>
+      <div><label>입금액</label><input id="iv-paidamount" inputmode="numeric" value="${inv.paidAmount?fmtN(inv.paidAmount):''}" placeholder="0" oninput="const d=this.value.replace(/[^0-9]/g,'');this.value=d?(+d).toLocaleString('ko-KR'):''"></div>
+    </div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:12px">※ 입금일과 입금액을 모두 입력하고 저장하면 자동으로 <b>종결</b> 처리됩니다. (비우면 미결)</div>
+    <table>
+      <thead><tr><th style="width:36px">No</th><th>주문일자</th><th>차량번호</th><th>차종</th><th class="r">합계</th></tr></thead>
+      <tbody>${rows||'<tr><td colspan="5" class="c" style="color:var(--muted)">묶인 주문이 없습니다</td></tr>'}</tbody>
+    </table>`;
+  document.getElementById('invoice-modal').classList.add('open');
+}
+
+function closeInvoiceModal(){ document.getElementById('invoice-modal').classList.remove('open'); modalInvoiceId=null; }
+
+async function saveInvoiceModal(){
+  let invs; try { invs = await getInvoices(); } catch(_){ return; }
+  const inv=invs.find(v=>String(v.id)===String(modalInvoiceId)); if(!inv) return;
+  const billed=document.getElementById('iv-billed').value;
+  const paidDate=document.getElementById('iv-paiddate').value;
+  const paidAmount=parseInt(document.getElementById('iv-paidamount').value.replace(/[^0-9]/g,''))||0;
+  const paidStatus=(paidDate && paidAmount>0)?'종결':'미결';
+  const billedDate = billed==='청구함' ? (inv.billedDate||today()) : '';
+  const updated=Object.assign({}, inv, {billed, billedDate, paidStatus, paidDate, paidAmount});
+  await withLoading('저장 중...', ()=>saveInvoiceAPI(updated));
+  closeInvoiceModal(); renderInvoices();
+}
+
+function printCurrentInvoice(){ if(modalInvoiceId){ const id=modalInvoiceId; closeInvoiceModal(); printInvoiceById(id); } }
+
+async function deleteCurrentInvoice(){
+  if(!modalInvoiceId) return;
+  if(!confirm('이 청구서를 삭제하시겠습니까?\n묶였던 주문은 다시 청구 가능 상태로 돌아갑니다.')) return;
+  const id=modalInvoiceId;
+  let invs, allOrders; try { [invs, allOrders] = await Promise.all([getInvoices(), getOrders()]); } catch(_){ return; }
+  const inv=invs.find(v=>String(v.id)===String(id));
+  await withLoading('삭제 중...', async ()=>{
+    if(inv){ const ids=(inv.orderIds||[]).map(String);
+      for(const o of allOrders.filter(x=>ids.includes(String(x.id)))){
+        await saveOrderAPI(Object.assign({}, o, {invoiceId:''}));
+      }
+    }
+    await deleteInvoiceAPI(id);
+  });
+  closeInvoiceModal(); renderInvoices();
 }
 
 // ──────────── 거래처 관리 ────────────
@@ -1227,6 +1424,7 @@ function fmtPhone(v){
 document.addEventListener('keydown', function(e){
   if(e.key!=='Escape') return;
   if(document.getElementById('edit-modal').classList.contains('open'))        closeEditModal();
+  else if(document.getElementById('invoice-modal').classList.contains('open')) closeInvoiceModal();
   else if(document.getElementById('client-edit-modal').classList.contains('open')) closeClientEdit();
   else if(document.getElementById('client-modal').classList.contains('open'))  closeClientModal();
 });
