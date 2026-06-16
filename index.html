@@ -1101,7 +1101,7 @@ function buildInvoicePrintHTML(inv, orders){
   const sub=inv.sub||0, vat=inv.vat||0, total=inv.total||0;
   let html = `
     <div class="doc-title">청 구 서</div>
-    <div class="bill-doc-period">청구서번호: ${inv.id} &nbsp;|&nbsp; 청구일: ${fmtDate(inv.date)} &nbsp;|&nbsp; 청구기간: ${inv.periodFrom||''} ~ ${inv.periodTo||''}</div>
+    <div class="bill-doc-period">청구서번호: ${inv.id} &nbsp;|&nbsp; 청구일: ${fmtDate(inv.date)} &nbsp;|&nbsp; 청구기간: ${fmtDate(inv.periodFrom)} ~ ${fmtDate(inv.periodTo)}</div>
     <div class="doc-hdr">
       <table>
         <tr><td>공급자</td><td>${SUPPLIER.name}</td></tr>
@@ -1112,19 +1112,15 @@ function buildInvoicePrintHTML(inv, orders){
       </table>
       <table>
         <tr><td>거래처</td><td><b>${inv.clientName||''}</b></td></tr>
-        <tr><td>총 청구건수</td><td>${orders.length}건</td></tr>
-        <tr><td>총 공급가액</td><td>${fmt(sub)}</td></tr>
-        <tr><td>총 부가세</td><td>${fmt(vat)}</td></tr>
-        <tr><td>총 청구금액</td><td><b style="font-size:14px">${fmt(total)}</b></td></tr>
+        <tr><td>청구건수</td><td>${orders.length}건</td></tr>
       </table>
     </div>
-    <table class="doc-items"><tbody>
-      <tr><td colspan="8" class="bill-doc-group-hd" style="text-align:left">▸ ${inv.clientName||''} &nbsp;(${orders.length}건 / 합계 ${fmt(total)})</td></tr>
-      <tr>
+    <table class="doc-items">
+      <thead><tr>
         <th style="width:32px">No</th><th style="width:88px">주문일자</th><th style="width:84px">차량번호</th>
         <th style="width:110px">차종</th><th>부품 내역</th>
         <th style="width:96px">공급가액</th><th style="width:80px">부가세</th><th style="width:104px">합계(VAT포함)</th>
-      </tr>`;
+      </tr></thead><tbody>`;
   orders.forEach((o,idx)=>{
     const itemsSummary = (o.items||[]).map(r=>`${r.name}${r.qty>1?' x'+r.qty:''}`).filter(Boolean).join(', ');
     html += `<tr>
@@ -1138,12 +1134,15 @@ function buildInvoicePrintHTML(inv, orders){
       <td class="r"><b>${fmtN(o.total||0)}</b></td>
     </tr>`;
   });
-  html += `<tr class="bill-doc-grandtotal">
-      <td colspan="5" style="text-align:right;padding:10px 14px">합 계 (${orders.length}건)</td>
-      <td class="r">${fmtN(sub)}</td>
-      <td class="r">${fmtN(vat)}</td>
-      <td class="r">${fmtN(total)}</td>
-    </tr></tbody></table>`;
+  html += `</tbody></table>
+    <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-top:12px">
+      <div style="font-weight:700;color:#1f3a5f;font-size:13px">▸ ${inv.clientName||''} &nbsp;(총 ${orders.length}건)</div>
+      <table class="doc-sum">
+        <tr><td>공급가액</td><td>${fmt(sub)}</td></tr>
+        <tr><td>부가세</td><td>${fmt(vat)}</td></tr>
+        <tr class="fin"><td>합계 (VAT 포함)</td><td>${fmt(total)}</td></tr>
+      </table>
+    </div>`;
   return html;
 }
 
@@ -1198,7 +1197,7 @@ async function renderInvoices(){
       <td class="c">${v.id}</td>
       <td class="c">${fmtDate(v.date)}</td>
       <td><b>${v.clientName||''}</b></td>
-      <td class="c" style="white-space:nowrap">${v.periodFrom||''} ~ ${v.periodTo||''}</td>
+      <td class="c" style="white-space:nowrap">${fmtDate(v.periodFrom)} ~ ${fmtDate(v.periodTo)}</td>
       <td class="r"><b>${fmt(v.total||0)}</b></td>
       <td class="c"><span class="${billCls}">${billed}</span></td>
       <td class="c"><span class="${paidCls}">${paid}</span></td>
@@ -1226,7 +1225,7 @@ async function openInvoiceModal(id){
   document.getElementById('iv-modal-body').innerHTML=`
     <div class="grid g2" style="margin-bottom:12px">
       <div><label>거래처</label><input value="${inv.clientName||''}" readonly style="background:#f0f3f7;color:var(--muted)"></div>
-      <div><label>청구기간</label><input value="${inv.periodFrom||''} ~ ${inv.periodTo||''}" readonly style="background:#f0f3f7;color:var(--muted)"></div>
+      <div><label>청구기간</label><input value="${fmtDate(inv.periodFrom)} ~ ${fmtDate(inv.periodTo)}" readonly style="background:#f0f3f7;color:var(--muted)"></div>
     </div>
     <div class="grid g3" style="margin-bottom:12px">
       <div><label>공급가액</label><input value="${fmt(inv.sub||0)}" readonly style="background:#f0f3f7;color:var(--muted)"></div>
