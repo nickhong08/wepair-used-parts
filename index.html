@@ -118,6 +118,11 @@
   .bill-doc-group-hd{background:#1f3a5f;color:#fff;font-weight:700;padding:7px 10px;font-size:12px}
   .bill-doc-subtotal td{background:#f0f3f7;font-weight:700}
   .bill-doc-grandtotal td{background:#1f3a5f;color:#fff;font-weight:800;font-size:13px}
+  /* 청구서 부품 내역 — 품목별 금액 줄 */
+  .part-line{display:flex;justify-content:space-between;gap:12px;padding:2px 0;border-bottom:1px dotted #ccc}
+  .part-line:last-child{border-bottom:none}
+  .part-line .qty{color:#888;font-size:11px;margin-left:4px}
+  .part-line .amt{font-variant-numeric:tabular-nums;white-space:nowrap}
   .page-break{page-break-before:always}
 
   /* ── 모바일 대응 ── */
@@ -1118,17 +1123,18 @@ function buildInvoicePrintHTML(inv, orders){
     <table class="doc-items">
       <thead><tr>
         <th style="width:32px">No</th><th style="width:88px">주문일자</th><th style="width:84px">차량번호</th>
-        <th style="width:110px">차종</th><th>부품 내역</th>
+        <th style="width:110px">차종</th><th>부품 내역 <span style="font-weight:400;font-size:11px">(품목 · 수량 · 공급가)</span></th>
         <th style="width:96px">공급가액</th><th style="width:80px">부가세</th><th style="width:104px">합계(VAT포함)</th>
       </tr></thead><tbody>`;
   orders.forEach((o,idx)=>{
-    const itemsSummary = (o.items||[]).map(r=>`${r.name}${r.qty>1?' x'+r.qty:''}`).filter(Boolean).join(', ');
+    const partLines = (o.items||[]).filter(r=>r.name).map(r=>
+      `<div class="part-line"><span class="nm">${r.name}<span class="qty">×${r.qty||1}</span></span><span class="amt">${fmtN((r.qty||1)*(r.price||0))}</span></div>`).join('');
     html += `<tr>
       <td class="c">${idx+1}</td>
       <td class="c" style="white-space:nowrap">${fmtDate(o.date)}</td>
       <td class="c" style="white-space:nowrap">${o.plate||''}</td>
       <td>${[o.brand,o.model].filter(Boolean).join(' ')}</td>
-      <td style="font-size:12px;word-break:break-all">${itemsSummary}</td>
+      <td style="font-size:12px">${partLines}</td>
       <td class="r">${fmtN(o.sub||0)}</td>
       <td class="r">${fmtN(o.vat||0)}</td>
       <td class="r"><b>${fmtN(o.total||0)}</b></td>
