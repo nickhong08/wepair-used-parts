@@ -118,11 +118,6 @@
   .bill-doc-group-hd{background:#1f3a5f;color:#fff;font-weight:700;padding:7px 10px;font-size:12px}
   .bill-doc-subtotal td{background:#f0f3f7;font-weight:700}
   .bill-doc-grandtotal td{background:#1f3a5f;color:#fff;font-weight:800;font-size:13px}
-  /* 청구서 부품 내역 — 품목별 금액 줄 */
-  .part-line{display:flex;justify-content:space-between;gap:12px;padding:2px 0;border-bottom:1px dotted #ccc}
-  .part-line:last-child{border-bottom:none}
-  .part-line .qty{color:#888;font-size:11px;margin-left:4px}
-  .part-line .amt{font-variant-numeric:tabular-nums;white-space:nowrap}
   .page-break{page-break-before:always}
 
   /* ── 모바일 대응 ── */
@@ -1127,14 +1122,20 @@ function buildInvoicePrintHTML(inv, orders){
         <th style="width:96px">공급가액</th><th style="width:80px">부가세</th><th style="width:104px">합계(VAT포함)</th>
       </tr></thead><tbody>`;
   orders.forEach((o,idx)=>{
-    const partLines = (o.items||[]).filter(r=>r.name).map(r=>
-      `<div class="part-line"><span class="nm">${r.name}<span class="qty">×${r.qty||1}</span></span><span class="amt">${fmtN((r.qty||1)*(r.price||0))}</span></div>`).join('');
+    const parts = (o.items||[]).filter(r=>r.name);
+    const partRows = parts.map((r,k)=>{
+      const bb = (k===parts.length-1) ? '' : 'border-bottom:1px dotted #ccc;';
+      return `<tr>
+        <td style="border:none;${bb}padding:3px 8px 3px 0">${r.name}<span style="color:#888;font-size:11px;margin-left:4px">×${r.qty||1}</span></td>
+        <td style="border:none;${bb}padding:3px 0;text-align:right;white-space:nowrap;width:96px;font-variant-numeric:tabular-nums">${fmtN((r.qty||1)*(r.price||0))}</td>
+      </tr>`;
+    }).join('');
     html += `<tr>
       <td class="c">${idx+1}</td>
       <td class="c" style="white-space:nowrap">${fmtDate(o.date)}</td>
       <td class="c" style="white-space:nowrap">${o.plate||''}</td>
       <td>${[o.brand,o.model].filter(Boolean).join(' ')}</td>
-      <td style="font-size:12px">${partLines}</td>
+      <td style="font-size:12px;padding:4px 8px"><table style="width:100%;border-collapse:collapse">${partRows}</table></td>
       <td class="r">${fmtN(o.sub||0)}</td>
       <td class="r">${fmtN(o.vat||0)}</td>
       <td class="r"><b>${fmtN(o.total||0)}</b></td>
