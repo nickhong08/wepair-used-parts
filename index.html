@@ -149,17 +149,23 @@
 <div id="lock-screen">
   <div class="lock-logo">WEPAIR</div>
   <h2>중고부품 운영</h2>
-  <p>접근 비밀번호를 입력하세요</p>
-  <input id="lock-pw" type="password" placeholder="••••" maxlength="20"
-         onkeydown="if(event.key==='Enter')tryUnlock()">
+  <p>직원 로그인</p>
+  <input id="login-id" type="text" placeholder="아이디" autocomplete="username"
+         style="letter-spacing:normal;font-size:15px;text-align:left"
+         onkeydown="if(event.key==='Enter')document.getElementById('login-pw').focus()">
+  <input id="login-pw" type="password" placeholder="비밀번호" autocomplete="current-password"
+         style="letter-spacing:normal;font-size:15px;text-align:left"
+         onkeydown="if(event.key==='Enter')doLogin()">
   <div id="lock-err"></div>
-  <button onclick="tryUnlock()">확인</button>
+  <button onclick="doLogin()">로그인</button>
 </div>
 
 <header>
   <h1>위페어 중고부품 운영</h1>
   <span class="tag">중고부품 거래관리</span>
   <span class="spacer"></span>
+  <span id="who" style="font-size:12px;color:#cfd7e2"></span>
+  <button class="noprint" onclick="doLogout()" style="background:#ffffff1a;color:#e8edf3;border:none;padding:6px 12px;border-radius:8px;cursor:pointer;font-size:12px">로그아웃</button>
 </header>
 
 <nav class="noprint">
@@ -475,6 +481,7 @@
 <!-- ══════════════ 인쇄 영역 ══════════════ -->
 <div id="print-area"></div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 // ──────────── 상수 ────────────
 const STATUSES = ['견적요청','주문확정'];
@@ -488,30 +495,13 @@ const SUPPLIER = {
   tel:'010-3942-4945', bank:'하나은행 120-910020-43804'
 };
 
-// ──────────── API 설정 ────────────
-// Apps Script 배포 후 아래 URL을 붙여넣으세요
-const API_URL = 'https://script.google.com/macros/s/AKfycbz5pyW0otbh3XKRRVp2QO_yN5Nw_MIAEc8L5FFrh6QqhgtnTVYP-JD6sDArGdEYq-AA/exec';
+// ──────────── Supabase 연결 ────────────
+const SUPABASE_URL = 'https://iomkulgjywrkueturevn.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_ffAW1CmEr0cMvgL98ZlRSg_TIypVfvm';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // ──────────── 캐시 ────────────
 const _cache = { orders: null, clients: null, invoices: null };
-
-// ──────────── API 래퍼 ────────────
-async function apiGet(action) {
-  const res = await fetch(`${API_URL}?action=${action}`);
-  const data = await res.json();
-  if (data.error) throw new Error(data.error);
-  return data;
-}
-
-async function apiPost(body) {
-  const res = await fetch(API_URL, {
-    method: 'POST',
-    body: JSON.stringify(body)
-  });
-  const data = await res.json();
-  if (data.error) throw new Error(data.error);
-  return data;
-}
 
 async function withLoading(msg, fn) {
   const overlay = document.getElementById('loading-overlay');
@@ -522,46 +512,50 @@ async function withLoading(msg, fn) {
   finally   { overlay.style.display = 'none'; }
 }
 
-// ──────────── 데이터 접근 (캐시 + API) ────────────
+// ──────────── 데이터 접근 (캐시 + Supabase) ────────────
+function _chk(res){ if(res && res.error) throw new Error(res.error.message || String(res.error)); return res ? res.data : null; }
+
 async function getOrders() {
   if (!_cache.orders) {
-    const data = await apiGet('getOrders');
-    data.forEach(o => { o.date = fmtDate(o.date); }); // 날짜를 YYYY-MM-DD로 정규화(시간·시간대 제거)
+    const data = _chk(await sb.from('orders').select('*')) || [];
+    data.forEach(o => { o.date = fmtDate(o.date); }); // 날짜를 YYYY-MM-DD로 정규화
     _cache.orders = data;
   }
   return _cache.orders;
 }
 async function getClients() {
-  if (!_cache.clients) _cache.clients = await apiGet('getClients');
+  if (!_cache.clients) _cache.clients = _chk(await sb.from('clients').select('*')) || [];
   return _cache.clients;
 }
-async function saveOrderAPI(order) {
-  await apiPost({ action: 'saveOrder', record: order });
-  _cache.orders = null;
-}
-async function deleteOrderAPI(id) {
-  await apiPost({ action: 'deleteOrder', id });
-  _cache.orders = null;
-}
-async function saveClientAPI(client) {
-  await apiPost({ action: 'saveClient', record: client });
-  _cache.clients = null;
-}
-async function deleteClientAPI(id) {
-  await apiPost({ action: 'deleteClient', id });
-  _cache.clients = null;
-}
 async function getInvoices() {
-  if (!_cache.invoices) _cache.invoices = await apiGet('getInvoices');
+  if (!_cache.invoices) _cache.invoices = _chk(await sb.from('invoices').select('*')) || [];
   return _cache.invoices;
 }
+async function saveOrderAPI(order) {
+  _chk(await sb.from('orders').upsert(order)); _cache.orders = null;
+}
+async function saveOrdersAPI(orders) {            // 여러 건 한 번에 저장(대량 처리·동시성 안전)
+  if (!orders || !orders.length) return;
+  _chk(await sb.from('orders').upsert(orders)); _cache.orders = null;
+}
+async function deleteOrderAPI(id) {
+  _chk(await sb.from('orders').delete().eq('id', id)); _cache.orders = null;
+}
+async function saveClientAPI(client) {
+  _chk(await sb.from('clients').upsert(client)); _cache.clients = null;
+}
+async function deleteClientAPI(id) {
+  _chk(await sb.from('clients').delete().eq('id', id)); _cache.clients = null;
+}
 async function saveInvoiceAPI(inv) {
-  await apiPost({ action: 'saveInvoice', record: inv });
-  _cache.invoices = null;
+  _chk(await sb.from('invoices').upsert(inv)); _cache.invoices = null;
+}
+async function saveInvoicesAPI(invs) {            // 여러 건 한 번에 저장
+  if (!invs || !invs.length) return;
+  _chk(await sb.from('invoices').upsert(invs)); _cache.invoices = null;
 }
 async function deleteInvoiceAPI(id) {
-  await apiPost({ action: 'deleteInvoice', id });
-  _cache.invoices = null;
+  _chk(await sb.from('invoices').delete().eq('id', id)); _cache.invoices = null;
 }
 
 // ──────────── 견적번호 ────────────
@@ -594,7 +588,7 @@ function switchTab(name){
 }
 document.querySelectorAll('nav button').forEach(btn=>{
   btn.addEventListener('click',()=>{
-    if(!API_URL){ alert('상단 스크립트의 API_URL을 먼저 입력해주세요.'); return; }
+    if(!sb){ alert('Supabase 연결이 필요합니다.'); return; }
     switchTab(btn.dataset.tab);
   });
 });
@@ -1071,6 +1065,7 @@ async function generateInvoice(){
     let maxSeq = 0;
     try { (await getInvoices()).forEach(v=>{ const id=String(v.id||''); if(id.includes('INV-'+d)){ const s=parseInt(id.split('-').pop()||'0'); if(s>maxSeq) maxSeq=s; } }); } catch(_){}
 
+    const newInvoices=[], orderUpdates=[];
     for(const orders of groups){
       maxSeq++;
       const invId = 'INV-'+d+'-'+String(maxSeq).padStart(3,'0');
@@ -1078,17 +1073,18 @@ async function generateInvoice(){
       const vat=orders.reduce((a,o)=>a+(o.vat||0),0);
       const total=orders.reduce((a,o)=>a+(o.total||0),0);
       const dates=orders.map(o=>o.date).filter(Boolean).sort();
-      const inv = {
+      newInvoices.push({
         id:invId, date:today(),
         clientId:orders[0].clientId||'', clientName:orders[0].clientName||'(미지정)',
         periodFrom:dates[0]||'', periodTo:dates[dates.length-1]||'',
         orderIds:orders.map(o=>o.id),
         sub, vat, total,
         billed:'미청구', billedDate:'', paidStatus:'미결', paidDate:'', paidAmount:0, note:''
-      };
-      await saveInvoiceAPI(inv);
-      for(const o of orders){ await saveOrderAPI(Object.assign({}, o, {invoiceId:invId})); }
+      });
+      orders.forEach(o=> orderUpdates.push(Object.assign({}, o, {invoiceId:invId})));
     }
+    await saveInvoicesAPI(newInvoices);   // 청구서 한 번에 저장
+    await saveOrdersAPI(orderUpdates);    // 주문 일괄 갱신 (수백 건도 한 번에)
   });
 
   billSelected.clear();
@@ -1282,9 +1278,8 @@ async function deleteCurrentInvoice(){
   const inv=invs.find(v=>String(v.id)===String(id));
   await withLoading('삭제 중...', async ()=>{
     if(inv){ const ids=(inv.orderIds||[]).map(String);
-      for(const o of allOrders.filter(x=>ids.includes(String(x.id)))){
-        await saveOrderAPI(Object.assign({}, o, {invoiceId:''}));
-      }
+      const upd = allOrders.filter(x=>ids.includes(String(x.id))).map(o=>Object.assign({}, o, {invoiceId:''}));
+      await saveOrdersAPI(upd);
     }
     await deleteInvoiceAPI(id);
   });
@@ -1435,51 +1430,52 @@ document.addEventListener('keydown', function(e){
   else if(document.getElementById('client-modal').classList.contains('open'))  closeClientModal();
 });
 
-// ──────────── 인증 ────────────
-const AUTH_PW    = '0000';
-const AUTH_HOURS = 9;
-const AUTH_KEY   = 'wp_used_auth';
-
-function isAuthed() {
-  const t = localStorage.getItem(AUTH_KEY);
-  if (!t) return false;
-  return (Date.now() - Number(t)) < AUTH_HOURS * 3600 * 1000;
+// ──────────── 로그인 (Supabase Auth — 아이디+비밀번호) ────────────
+const LOGIN_DOMAIN = '@wepair.local';   // 아이디 뒤에 자동으로 붙는 내부 도메인(화면엔 안 보임)
+async function doLogin() {
+  const id  = document.getElementById('login-id').value.trim();
+  const pw  = document.getElementById('login-pw').value;
+  const err = document.getElementById('lock-err');
+  err.textContent = '';
+  if (!id || !pw) { err.textContent = '아이디와 비밀번호를 입력하세요.'; return; }
+  const email = id.includes('@') ? id : id + LOGIN_DOMAIN;   // 아이디 → 내부 이메일로 변환
+  const { error } = await sb.auth.signInWithPassword({ email, password: pw });
+  if (error) { err.textContent = '로그인 실패 — 아이디 또는 비밀번호를 확인하세요.'; return; }
+  document.getElementById('lock-screen').style.display = 'none';
+  await startApp();
 }
-
-function tryUnlock() {
-  const pw = document.getElementById('lock-pw').value;
-  if (pw === AUTH_PW) {
-    localStorage.setItem(AUTH_KEY, Date.now().toString());
-    document.getElementById('lock-screen').style.display = 'none';
-    startApp();
-  } else {
-    document.getElementById('lock-err').textContent = '비밀번호가 올바르지 않습니다.';
-    document.getElementById('lock-pw').value = '';
-    document.getElementById('lock-pw').focus();
-  }
+async function doLogout() {
+  await sb.auth.signOut();
+  location.reload();
 }
+function showWho(email) { const el = document.getElementById('who'); if (el) el.textContent = (email || '').replace(LOGIN_DOMAIN, ''); }
 
 // ──────────── 시작 ────────────
 async function startApp() {
-  if(!API_URL){
+  if(!sb){
     document.querySelector('header').insertAdjacentHTML('afterend',
       `<div style="background:#d64545;color:#fff;padding:10px 22px;font-size:13px;font-weight:600;text-align:center">
-        ⚠️ Apps Script 배포 URL을 파일 상단 <code>API_URL</code>에 입력해야 사용할 수 있습니다.
+        ⚠️ Supabase 연결 정보(SUPABASE_URL / SUPABASE_KEY)를 확인해주세요.
       </div>`);
     return;
   }
+  try { const { data:{ user } } = await sb.auth.getUser(); showWho(user && user.email); } catch(_){}
   await withLoading('데이터 불러오는 중...', async () => {
     await Promise.all([getOrders(), getClients()]);
   });
   await initOrder();
 }
 
-if (isAuthed()) {
-  document.getElementById('lock-screen').style.display = 'none';
-  startApp();
-} else {
-  document.getElementById('lock-pw').focus();
-}
+// 페이지 열릴 때: 로그인 세션이 있으면 바로 진입, 없으면 로그인 화면
+(async () => {
+  const { data: { session } } = await sb.auth.getSession();
+  if (session) {
+    document.getElementById('lock-screen').style.display = 'none';
+    startApp();
+  } else {
+    document.getElementById('login-id').focus();
+  }
+})();
 </script>
 </body>
 </html>
