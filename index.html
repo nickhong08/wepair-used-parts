@@ -88,10 +88,11 @@
   input[type=checkbox]{width:auto;accent-color:var(--blue)}
   /* Print */
   @media print{
+    @page{size:A4;margin:14mm}
     header,nav,.noprint,button{display:none!important}
     body{background:#fff}
     main{display:none}
-    #print-area{display:block!important}
+    #print-area{display:block!important;padding:0!important}
   }
   /* Print area */
   #print-area{display:none;font-family:'Malgun Gothic','맑은 고딕',sans-serif;font-size:12px;color:#1a1a1a;padding:40px 48px}
@@ -103,15 +104,16 @@
   .doc-veh{width:100%;border-collapse:collapse;margin-bottom:14px}
   .doc-veh td{border:1px solid #999;padding:6px 10px;vertical-align:middle}
   .doc-veh td.lbl{background:#f0f0f0;font-weight:700;width:70px;text-align:center;white-space:nowrap}
-  .doc-items{width:100%;border-collapse:collapse;margin-bottom:0}
-  .doc-items th{background:#f0f0f0;border:1px solid #999;padding:6px 10px;font-weight:700;text-align:center}
-  .doc-items td{border:1px solid #999;padding:6px 10px;vertical-align:middle}
-  .doc-items td.c{text-align:center}.doc-items td.r{text-align:right;font-variant-numeric:tabular-nums}
+  .doc-items{width:100%;border-collapse:collapse;margin-bottom:0;table-layout:fixed}
+  .doc-items th{background:#f0f0f0;border:1px solid #999;padding:6px 7px;font-weight:700;text-align:center;word-break:keep-all}
+  .doc-items td{border:1px solid #999;padding:6px 7px;vertical-align:middle;word-break:break-word}
+  .doc-items td.c{text-align:center}.doc-items td.r{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .doc-items.inv th,.doc-items.inv td{font-size:11px;padding:5px 6px}
   .doc-sum-wrap{display:flex;justify-content:flex-end}
   .doc-sum{width:320px;border-collapse:collapse}
   .doc-sum td{border:1px solid #999;padding:6px 10px}
   .doc-sum td:first-child{background:#f0f0f0;font-weight:700;text-align:center;width:160px}
-  .doc-sum td:last-child{text-align:right;font-variant-numeric:tabular-nums}
+  .doc-sum td:last-child{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
   .doc-sum tr.fin td{font-weight:700;font-size:13px}
   /* 청구서 전용 */
   .bill-doc-period{font-size:12px;color:#555;text-align:right;margin-bottom:10px}
@@ -898,36 +900,30 @@ function buildQuotePrint(o){
     <td class="r">${fmtN((r.qty||1)*(r.price||0))}</td></tr>`).join('');
   document.getElementById('print-area').innerHTML=`
     <div class="doc-title">부 품 견 적 서</div>
-    <div class="doc-hdr">
-      <table>
-        <tr><td>견적번호</td><td>${o.id}</td></tr>
-        <tr><td>일자</td><td>${o.date}</td></tr>
-        <tr><td>담당자</td><td>${o.manager||'홍대현'}</td></tr>
-      </table>
-      <table>
-        <tr><td>공급자</td><td>${SUPPLIER.name}</td></tr>
-        <tr><td>사업자번호</td><td>${SUPPLIER.biz}</td></tr>
-        <tr><td>주소</td><td>${SUPPLIER.addr}</td></tr>
-        <tr><td>담당자</td><td>${o.manager||'홍대현'} / ${SUPPLIER.tel}</td></tr>
-        <tr><td>계좌번호</td><td>${SUPPLIER.bank}</td></tr>
-      </table>
-    </div>
+    <table class="doc-veh" style="margin-bottom:14px">
+      <colgroup><col style="width:84px"><col><col style="width:84px"><col></colgroup>
+      <tr><td class="lbl">견적번호</td><td>${o.id}</td><td class="lbl">공급자</td><td>${SUPPLIER.name}</td></tr>
+      <tr><td class="lbl">일자</td><td>${o.date}</td><td class="lbl">사업자번호</td><td>${SUPPLIER.biz}</td></tr>
+      <tr><td class="lbl">담당자</td><td>${o.manager||'홍대현'}</td><td class="lbl">주소</td><td>${SUPPLIER.addr}</td></tr>
+      <tr><td class="lbl">연락처</td><td>${SUPPLIER.tel}</td><td class="lbl">계좌번호</td><td>${SUPPLIER.bank}</td></tr>
+    </table>
     <table class="doc-veh">
-      <tr><td class="lbl">차량번호</td><td>${o.plate||''}</td><td class="lbl">차대번호</td><td style="min-width:200px">${o.vin||''}</td></tr>
+      <colgroup><col style="width:84px"><col><col style="width:84px"><col></colgroup>
+      <tr><td class="lbl">차량번호</td><td>${o.plate||''}</td><td class="lbl">차대번호</td><td>${o.vin||''}</td></tr>
       <tr><td class="lbl">브랜드</td><td>${o.brand||''}</td><td class="lbl">차량정보</td><td>${o.model||''}</td></tr>
       <tr><td class="lbl">업체명</td><td>${o.clientName||''}</td><td class="lbl">주소</td><td>${o.clientAddr||''}</td></tr>
     </table>
     <table class="doc-items">
-      <thead><tr><th style="width:36px">No</th><th>품명</th><th style="width:50px">수량</th>
-        <th style="width:130px">납품단가<br><span style="font-weight:400;font-size:11px">(VAT별도)</span></th>
-        <th style="width:130px">총 납품가<br><span style="font-weight:400;font-size:11px">(VAT별도)</span></th></tr></thead>
-      <tbody>${iRows}</tbody>
-    </table>
-    <div class="doc-sum-wrap"><table class="doc-sum">
-      <tr><td>공급가액</td><td>${fmt(sub)}</td></tr>
-      <tr><td>부가세</td><td>${fmt(vat)}</td></tr>
-      <tr class="fin"><td>합계 (VAT 포함)</td><td>${fmt(total)}</td></tr>
-    </table></div>`;
+      <colgroup><col style="width:34px"><col><col style="width:48px"><col style="width:120px"><col style="width:120px"></colgroup>
+      <thead><tr><th>No</th><th>품명</th><th>수량</th>
+        <th>납품단가<br><span style="font-weight:400;font-size:11px">(VAT별도)</span></th>
+        <th>총 납품가<br><span style="font-weight:400;font-size:11px">(VAT별도)</span></th></tr></thead>
+      <tbody>${iRows}
+        <tr><td colspan="3" style="border:none"></td><td class="r" style="background:#f0f0f0;font-weight:700">공급가액</td><td class="r">${fmt(sub)}</td></tr>
+        <tr><td colspan="3" style="border:none"></td><td class="r" style="background:#f0f0f0;font-weight:700">부가세</td><td class="r">${fmt(vat)}</td></tr>
+        <tr><td colspan="3" style="border:none"></td><td class="r" style="background:#f0f0f0;font-weight:700;font-size:13px">합계 (VAT 포함)</td><td class="r" style="font-weight:700;font-size:13px">${fmt(total)}</td></tr>
+      </tbody>
+    </table>`;
 }
 
 // ══════════════════════════════════════════════
@@ -1111,19 +1107,20 @@ function buildInvoicePrintHTML(inv, orders){
         <tr><td>청구건수</td><td>${orders.length}건</td></tr>
       </table>
     </div>
-    <table class="doc-items">
+    <table class="doc-items inv">
+      <colgroup><col style="width:26px"><col style="width:70px"><col style="width:66px"><col style="width:92px"><col><col style="width:82px"><col style="width:64px"><col style="width:96px"></colgroup>
       <thead><tr>
-        <th style="width:32px">No</th><th style="width:88px">주문일자</th><th style="width:84px">차량번호</th>
-        <th style="width:110px">차종</th><th>부품 내역 <span style="font-weight:400;font-size:11px">(품목 · 수량 · 공급가)</span></th>
-        <th style="width:96px">공급가액</th><th style="width:80px">부가세</th><th style="width:104px">합계(VAT포함)</th>
+        <th style="width:26px">No</th><th style="width:72px">주문일자</th><th style="width:68px">차량번호</th>
+        <th style="width:94px">차종</th><th>부품 내역 <span style="font-weight:400;font-size:11px">(품목·수량·공급가)</span></th>
+        <th style="width:80px">공급가액</th><th style="width:62px">부가세</th><th style="width:96px">합계(VAT포함)</th>
       </tr></thead><tbody>`;
   orders.forEach((o,idx)=>{
     const parts = (o.items||[]).filter(r=>r.name);
     const partRows = parts.map((r,k)=>{
       const bb = (k===parts.length-1) ? '' : 'border-bottom:1px dotted #ccc;';
       return `<tr>
-        <td style="border:none;${bb}padding:3px 8px 3px 0">${r.name}<span style="color:#888;font-size:11px;margin-left:4px">×${r.qty||1}</span></td>
-        <td style="border:none;${bb}padding:3px 0;text-align:right;white-space:nowrap;width:96px;font-variant-numeric:tabular-nums">${fmtN((r.qty||1)*(r.price||0))}</td>
+        <td style="border:none;${bb}padding:1px 6px 1px 0;word-break:break-word">${r.name}<span style="color:#888;font-size:10px;margin-left:4px">×${r.qty||1}</span></td>
+        <td style="border:none;${bb}padding:1px 0;text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums">${fmtN((r.qty||1)*(r.price||0))}</td>
       </tr>`;
     }).join('');
     html += `<tr>
@@ -1131,7 +1128,7 @@ function buildInvoicePrintHTML(inv, orders){
       <td class="c" style="white-space:nowrap">${fmtDate(o.date)}</td>
       <td class="c" style="white-space:nowrap">${o.plate||''}</td>
       <td>${[o.brand,o.model].filter(Boolean).join(' ')}</td>
-      <td style="font-size:12px;padding:4px 8px"><table style="width:100%;border-collapse:collapse">${partRows}</table></td>
+      <td style="padding:3px 6px"><table style="width:100%;border-collapse:collapse">${partRows}</table></td>
       <td class="r">${fmtN(o.sub||0)}</td>
       <td class="r">${fmtN(o.vat||0)}</td>
       <td class="r"><b>${fmtN(o.total||0)}</b></td>
