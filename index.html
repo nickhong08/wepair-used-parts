@@ -15,6 +15,8 @@
   nav{display:flex;gap:4px;background:#fff;padding:0 22px;border-bottom:1px solid var(--line)}
   nav button{background:none;border:none;padding:14px 16px;font-size:14px;cursor:pointer;color:var(--muted);border-bottom:3px solid transparent;font-weight:600;transition:.15s}
   nav button.active{color:var(--navy);border-bottom-color:var(--blue)}
+  nav .navgrp{align-self:center;font-size:11px;font-weight:800;color:#9aa6b4;letter-spacing:.5px;padding:0 6px 0 2px;white-space:nowrap}
+  nav .navdiv{align-self:center;width:1px;height:18px;background:var(--line);margin:0 6px}
   main{padding:22px;max-width:1180px;margin:0 auto}
   .tab{display:none}.tab.active{display:block}
   .card{background:#fff;border:1px solid var(--line);border-radius:10px;padding:20px;margin-bottom:18px}
@@ -171,12 +173,17 @@
 </header>
 
 <nav class="noprint">
-  <button data-tab="order" class="active">＋ 주문 입력</button>
-  <button data-tab="list">주문 대장</button>
-  <button data-tab="billing">청구 관리</button>
-  <button data-tab="invoices">청구 내역</button>
-  <button data-tab="clients">거래처 관리</button>
-  <button data-tab="parts" style="display:none">부위 관리</button>
+  <span class="navgrp">주문</span>
+  <button data-tab="order" class="active">＋ 주문입력</button>
+  <button data-tab="list">주문대장</button>
+  <span class="navdiv"></span>
+  <span class="navgrp">청구</span>
+  <button data-tab="billing">청구관리</button>
+  <button data-tab="invoices">청구내역</button>
+  <span class="navdiv"></span>
+  <span class="navgrp">관리</span>
+  <button data-tab="clients">거래처</button>
+  <button data-tab="parts" style="display:none">부위</button>
 </nav>
 
 <main>
