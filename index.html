@@ -418,10 +418,17 @@
       <span id="part-msg" style="font-size:12px;color:var(--ok);margin-left:8px"></span>
     </div>
   </div>
-  <div id="parts-summary" class="noprint" style="font-size:13px;color:var(--navy);margin-bottom:10px;font-weight:700"></div>
+  <div class="search-bar noprint" style="margin-bottom:10px;align-items:center">
+    <div id="parts-summary" style="font-size:13px;color:var(--navy);font-weight:700;flex:1"></div>
+    <span id="parts-sel-info" style="font-size:12px;color:var(--muted)"></span>
+    <button class="btn red sm" id="parts-del-btn" onclick="deleteSelectedParts()" disabled style="opacity:.4">선택 삭제</button>
+  </div>
   <div class="card" style="padding:0;overflow:hidden">
     <table>
-      <thead><tr><th style="width:60px">No</th><th>부위명</th><th class="noprint" style="width:80px">관리</th></tr></thead>
+      <thead><tr>
+        <th style="width:36px" class="noprint"><input type="checkbox" id="parts-all" onchange="togglePartsAll(this)"></th>
+        <th style="width:54px">No</th><th>부위명 <span style="font-weight:400;font-size:11px;color:var(--muted)">(칸을 눌러 바로 수정)</span></th>
+      </tr></thead>
       <tbody id="parts-body"></tbody>
     </table>
     <div id="parts-empty" class="empty" style="display:none">등록된 부위가 없습니다.</div>
@@ -599,6 +606,10 @@ async function savePartAPI(p) {
 }
 async function deletePartAPI(id) {
   _chk(await sb.from('parts').delete().eq('id', id)); _cache.parts = null;
+}
+async function deletePartsAPI(ids) {            // 여러 부위 한 번에 삭제
+  if (!ids || !ids.length) return;
+  _chk(await sb.from('parts').delete().in('id', ids)); _cache.parts = null;
 }
 
 // ──────────── 견적번호 ────────────
@@ -1483,23 +1494,65 @@ function isAdmin(){ return ADMIN_IDS.includes((_userEmail||'').replace(LOGIN_DOM
 
 async function buildPartsDatalist(){
   let parts=[]; try { parts = await getParts(); } catch(_){ return; }
+  parts = parts.slice().sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''),'ko'));
   const dl=document.getElementById('parts-list'); if(!dl) return;
   dl.innerHTML = parts.map(p=>`<option value="${(p.name||'').replace(/"/g,'&quot;')}"></option>`).join('');
 }
+let partsSelected = new Set();
 async function renderParts(){
   let parts=[]; try { parts = await getParts(); } catch(_){ return; }
-  parts = parts.slice().sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''),'ko'));
+  parts = parts.slice().sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''),'ko'));  // 가나다 정렬
+  partsSelected = new Set([...partsSelected].filter(id=>parts.some(p=>String(p.id)===String(id))));
   setText('parts-summary', `등록된 부위 ${parts.length}개`);
+  updatePartsSelBar();
   const tb=document.getElementById('parts-body'), empty=document.getElementById('parts-empty');
   tb.innerHTML='';
-  if(!parts.length){ empty.style.display=''; return; }
+  const ac=document.getElementById('parts-all');
+  if(!parts.length){ empty.style.display=''; if(ac){ac.checked=false;ac.indeterminate=false;} return; }
   empty.style.display='none';
   parts.forEach((p,i)=>{
     const tr=document.createElement('tr');
-    tr.innerHTML=`<td class="c">${i+1}</td><td>${p.name||''}</td>
-      <td class="c noprint"><button class="btn red sm" onclick="deletePart('${p.id}')">삭제</button></td>`;
+    const checked = partsSelected.has(String(p.id));
+    tr.innerHTML=`
+      <td class="c noprint"><input type="checkbox" ${checked?'checked':''} onchange="togglePartSel('${p.id}',this.checked)"></td>
+      <td class="c">${i+1}</td>
+      <td><input value="${(p.name||'').replace(/"/g,'&quot;')}" onchange="renamePart('${p.id}', this.value)" style="border:1px solid var(--line);border-radius:6px"></td>`;
     tb.appendChild(tr);
   });
+  if(ac){ ac.checked = parts.every(p=>partsSelected.has(String(p.id))); ac.indeterminate = !ac.checked && parts.some(p=>partsSelected.has(String(p.id))); }
+}
+function updatePartsSelBar(){
+  const n=partsSelected.size;
+  const btn=document.getElementById('parts-del-btn'), info=document.getElementById('parts-sel-info');
+  if(btn){ btn.disabled = n===0; btn.style.opacity = n? '1':'.4'; }
+  if(info) info.textContent = n? `${n}개 선택됨` : '';
+}
+function togglePartSel(id, checked){ if(checked) partsSelected.add(String(id)); else partsSelected.delete(String(id)); updatePartsSelBar();
+  const ac=document.getElementById('parts-all'); if(ac){ ac.indeterminate = partsSelected.size>0; if(!checked) ac.checked=false; } }
+async function togglePartsAll(chk){
+  const parts=await getParts();
+  if(chk.checked) parts.forEach(p=>partsSelected.add(String(p.id))); else partsSelected.clear();
+  renderParts();
+}
+async function deleteSelectedParts(){
+  if(!isAdmin()){ alert('삭제는 관리자만 가능합니다.'); return; }
+  const ids=[...partsSelected];
+  if(!ids.length){ alert('삭제할 부위를 선택해주세요.'); return; }
+  if(!confirm(`선택한 ${ids.length}개 부위를 삭제할까요?`)) return;
+  await withLoading('삭제 중...', ()=>deletePartsAPI(ids));
+  partsSelected.clear();
+  await buildPartsDatalist(); renderParts();
+}
+async function renamePart(id, value){
+  if(!isAdmin()){ alert('수정은 관리자만 가능합니다.'); renderParts(); return; }
+  const name=(value||'').trim();
+  let parts; try { parts = await getParts(); } catch(_){ return; }
+  const p=parts.find(x=>String(x.id)===String(id)); if(!p) return;
+  if(!name){ alert('부위명을 입력해주세요.'); renderParts(); return; }
+  if(name===(p.name||'').trim()) return;
+  if(parts.some(x=>String(x.id)!==String(id) && (x.name||'').trim()===name)){ alert('이미 있는 부위입니다.'); renderParts(); return; }
+  await withLoading('수정 중...', ()=>savePartAPI({id:p.id, name, createdAt:p.createdAt}));
+  await buildPartsDatalist(); renderParts();
 }
 async function addPart(){
   if(!isAdmin()){ alert('부위 추가는 관리자만 가능합니다.'); return; }
@@ -1507,7 +1560,7 @@ async function addPart(){
   if(!name){ alert('부위명을 입력해주세요.'); return; }
   const parts=await getParts();
   if(parts.some(p=>(p.name||'').trim()===name)){ alert('이미 있는 부위입니다.'); return; }
-  await withLoading('추가 중...', ()=>savePartAPI({id:'P'+Date.now(), name, createdAt:today()}));
+  await withLoading('추가 중...', ()=>savePartAPI({id:'P'+Date.now()+Math.random().toString(36).slice(2,6), name, createdAt:today()}));
   document.getElementById('np-part').value='';
   const msg=document.getElementById('part-msg'); msg.textContent='✓ 추가 완료'; setTimeout(()=>msg.textContent='',2000);
   await buildPartsDatalist(); renderParts();
