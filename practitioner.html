@@ -67,6 +67,7 @@
   #grid-body td{white-space:nowrap}
   /* 주요부품만 잘라내지 않고 자연스럽게 줄바꿈 */
   #grid-body td.cell-parts{white-space:normal;word-break:keep-all;min-width:230px;max-width:340px}
+  #grid-body tr:hover td{background:#f6f9ff}
   #grid-count{font-size:13px;color:var(--navy);font-weight:700;margin:2px 0 10px}
   /* Modal */
   .modal-bg{display:none;position:fixed;inset:0;background:#0006;z-index:1000;align-items:center;justify-content:center}
@@ -509,6 +510,8 @@ async function renderGrid(){
       <td class="c" style="white-space:nowrap">
         <button class="btn ghost sm" onclick="openEditModal('${o.id}')">수정</button>
         <button class="btn gray sm" onclick="deleteOrder('${o.id}')">삭제</button></td>`;
+    tr.style.cursor='pointer';
+    tr.addEventListener('click',(e)=>{ if(e.target.closest('button,select,input,textarea,a')) return; openEditModal(o.id); });
     tb.appendChild(tr);
   });
 }
