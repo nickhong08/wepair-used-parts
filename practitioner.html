@@ -69,6 +69,16 @@
   #grid-body td.cell-parts{white-space:normal;word-break:keep-all;min-width:230px;max-width:340px}
   #grid-body tr:hover td{background:#f6f9ff}
   #grid-count{font-size:13px;color:var(--navy);font-weight:700;margin:2px 0 10px}
+  /* 탭 */
+  nav.tabs{display:flex;gap:4px;background:#fff;padding:0 22px;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:30}
+  nav.tabs button{background:none;border:none;padding:14px 18px;font-size:14px;cursor:pointer;color:var(--muted);border-bottom:3px solid transparent;font-weight:700;transition:.15s}
+  nav.tabs button.active{color:var(--navy);border-bottom-color:var(--blue)}
+  .ptab{display:none}.ptab.active{display:block}
+  /* 필터 2줄 그룹 */
+  .filter-row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+  .filter-row+.filter-row{margin-top:10px}
+  .mng-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:12px 0 10px}
+  .mng-head #grid-count{margin:0}
   /* Modal */
   .modal-bg{display:none;position:fixed;inset:0;background:#0006;z-index:1000;align-items:center;justify-content:center}
   .modal-bg.open{display:flex}
@@ -120,9 +130,15 @@
   <button onclick="doLogout()" style="background:#ffffff1a;color:#e8edf3;border:none;padding:6px 12px;border-radius:8px;cursor:pointer;font-size:12px">로그아웃</button>
 </header>
 
+<nav class="tabs">
+  <button data-ptab="reg" class="active">＋ 견적 등록</button>
+  <button data-ptab="mng">📋 견적 관리</button>
+</nav>
+
 <main>
 
-<!-- ══════════════ 빠른 등록 ══════════════ -->
+<!-- ══════════════ 견적 등록 탭 ══════════════ -->
+<div id="ptab-reg" class="ptab active">
 <div class="card">
   <h2>＋ 견적 의뢰 등록 <span class="hint">— 차량 1건 입력 → 운영툴 주문으로 자동 등록됩니다</span></h2>
   <div class="grid g4" style="margin-bottom:12px">
@@ -187,29 +203,40 @@
     <span id="save-msg" style="font-size:12px;color:var(--ok);margin-left:8px"></span>
   </div>
 </div>
+</div><!-- /ptab-reg -->
 
-<!-- ══════════════ 실무 대장 ══════════════ -->
+<!-- ══════════════ 견적 관리 탭 ══════════════ -->
+<div id="ptab-mng" class="ptab">
 <div class="kpi" id="kpi"></div>
 
-<div class="search-bar">
-  <div class="sf"><label>거래처</label><input id="f-client" placeholder="검색" oninput="renderGrid()"></div>
-  <div class="sf"><label>차량번호</label><input id="f-plate" placeholder="검색" oninput="renderGrid()"></div>
-  <div class="sf"><label>차명/차종</label><input id="f-car" placeholder="예) BMW, W214" oninput="renderGrid()"></div>
-  <div class="sf"><label>재고확보 상태</label>
-    <select id="f-inv" onchange="renderGrid()">
-      <option value="">전체</option>
-      <option value="재고확인중">재고확인중</option>
-      <option value="확인">확인</option>
-      <option value="재고없음">재고없음</option>
-      <option value="납품">납품</option>
-    </select>
+<div class="search-bar" style="flex-direction:column;align-items:stretch;gap:0">
+  <div class="filter-row">
+    <div class="sf"><label>거래처</label>
+      <select id="f-client" onchange="renderGrid()"><option value="">전체</option></select>
+    </div>
+    <div class="sf"><label>차량번호</label><input id="f-plate" placeholder="검색" oninput="renderGrid()"></div>
+    <div class="sf"><label>차종 / 차명</label><input id="f-car" placeholder="예) BMW, W214" oninput="renderGrid()"></div>
   </div>
-  <div class="sf"><label>시작일</label><input id="f-from" type="date" onchange="renderGrid()"></div>
-  <div class="sf"><label>종료일</label><input id="f-to" type="date" onchange="renderGrid()"></div>
-  <button class="btn sm ghost" onclick="clearFilters()">초기화</button>
+  <div class="filter-row">
+    <div class="sf"><label>재고확보 상태</label>
+      <select id="f-inv" onchange="renderGrid()">
+        <option value="">전체</option>
+        <option value="재고확인중">재고확인중</option>
+        <option value="확인">확인</option>
+        <option value="재고없음">재고없음</option>
+        <option value="납품">납품</option>
+      </select>
+    </div>
+    <div class="sf"><label>시작일</label><input id="f-from" type="date" onchange="renderGrid()"></div>
+    <div class="sf"><label>종료일</label><input id="f-to" type="date" onchange="renderGrid()"></div>
+    <button class="btn sm ghost" onclick="clearFilters()" style="height:38px">초기화</button>
+  </div>
 </div>
 
-<div id="grid-count"></div>
+<div class="mng-head">
+  <div id="grid-count"></div>
+  <button class="btn sm ghost" onclick="exportCSV()">⬇ CSV 추출</button>
+</div>
 <div class="card" style="padding:0">
   <div class="grid-scroll">
     <table>
@@ -226,6 +253,7 @@
   </div>
   <div id="grid-empty" class="empty" style="display:none">등록된 건이 없습니다.</div>
 </div>
+</div><!-- /ptab-mng -->
 
 </main>
 
@@ -432,7 +460,7 @@ async function saveNewOrder(){
   localStorage.setItem('wp_last_manager', o.manager||'');
   localStorage.setItem('wp_last_client', o.clientId||'');
   const msg=document.getElementById('save-msg'); msg.textContent='✓ 등록 완료 ('+o.id+')'; setTimeout(()=>msg.textContent='',3000);
-  await initForm(); renderGrid();
+  await initForm(); await populateClientFilter(); renderGrid();
 }
 
 // ──────────── 새 거래처 ────────────
@@ -457,17 +485,32 @@ function partsSummary(o){
 }
 function clearFilters(){ ['f-client','f-plate','f-car','f-from','f-to'].forEach(id=>document.getElementById(id).value=''); document.getElementById('f-inv').value=''; renderGrid(); }
 
-async function renderGrid(){
-  let all; try{ all=await getOrders(); }catch(_){ return; }
-  const fC=(document.getElementById('f-client').value||'').toLowerCase();
+// 탭 전환
+function switchPTab(name){
+  document.querySelectorAll('nav.tabs button').forEach(b=>b.classList.toggle('active',b.dataset.ptab===name));
+  document.querySelectorAll('.ptab').forEach(t=>t.classList.remove('active'));
+  const el=document.getElementById('ptab-'+name); if(el) el.classList.add('active');
+  if(name==='mng'){ populateClientFilter(); renderGrid(); }
+}
+// 거래처 필터 드롭다운 채우기 (주문에 등장한 거래처만)
+async function populateClientFilter(){
+  const sel=document.getElementById('f-client'); if(!sel) return;
+  const cur=sel.value;
+  let all=[]; try{ all=await getOrders(); }catch(_){}
+  const names=[...new Set(all.map(o=>o.clientName).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ko'));
+  sel.innerHTML='<option value="">전체</option>'+names.map(n=>`<option value="${n.replace(/"/g,'&quot;')}">${n}</option>`).join('');
+  if(cur && names.includes(cur)) sel.value=cur;
+}
+// 현재 필터 적용 결과(정렬 포함)
+function applyFilters(all){
+  const fClient=document.getElementById('f-client').value;
   const fP=(document.getElementById('f-plate').value||'').toLowerCase();
   const fCar=(document.getElementById('f-car').value||'').toLowerCase();
   const fI=document.getElementById('f-inv').value;
   const fF=document.getElementById('f-from').value;
   const fT=document.getElementById('f-to').value;
-
-  const list=all.filter(o=>{
-    if(fC && !(o.clientName||'').toLowerCase().includes(fC)) return false;
+  return all.filter(o=>{
+    if(fClient && (o.clientName||'')!==fClient) return false;
     if(fP && !(o.plate||'').toLowerCase().includes(fP)) return false;
     if(fCar && !(((o.brand||'')+' '+(o.model||'')).toLowerCase().includes(fCar))) return false;
     if(fI && (o.inventoryStatus||'재고확인중')!==fI) return false;
@@ -475,6 +518,31 @@ async function renderGrid(){
     if(fT && o.date>fT) return false;
     return true;
   }).sort((a,b)=>String(b.date).localeCompare(String(a.date))||String(b.id).localeCompare(String(a.id)));
+}
+// CSV 추출 (현재 필터 결과)
+async function exportCSV(){
+  let all; try{ all=await getOrders(); }catch(_){ return; }
+  const list=applyFilters(all);
+  if(!list.length){ alert('추출할 항목이 없습니다.'); return; }
+  const head=['의뢰일','거래처','차량번호','브랜드','차종','주요부품','공급가액','부가세','합계(VAT포함)','재고확보','배송확인','반품/회수','결재확인','특이사항'];
+  const rows=list.map(o=>[
+    o.date||'', o.clientName||'', o.plate||'', o.brand||'', o.model||'',
+    (o.items||[]).map(r=>r.name).filter(Boolean).join(' / '),
+    o.sub||0, o.vat||0, o.total||0,
+    o.inventoryStatus||'', o.deliveryConfirmed?'O':'X',
+    o.returnNote||'', o.settleConfirmed?'O':'X', o.note||''
+  ]);
+  const esc=v=>{ v=String(v==null?'':v); return /[",\n\r]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v; };
+  const csv=[head,...rows].map(r=>r.map(esc).join(',')).join('\r\n');
+  const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8;'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download='중고부품_견적관리_'+today()+'.csv'; document.body.appendChild(a); a.click();
+  a.remove(); URL.revokeObjectURL(a.href);
+}
+
+async function renderGrid(){
+  let all; try{ all=await getOrders(); }catch(_){ return; }
+  const list=applyFilters(all);
   setText('grid-count', `조회 ${list.length}건 (전체 ${all.length}건)`);
 
   // KPI
@@ -694,7 +762,9 @@ async function startApp(){
   await withLoading('데이터 불러오는 중...', async()=>{ await Promise.all([getOrders(), getClients()]); });
   await buildPartsDatalist();
   await initForm();
+  await populateClientFilter();
   renderGrid();
+  document.querySelectorAll('nav.tabs button').forEach(b=>{ b.onclick=()=>switchPTab(b.dataset.ptab); });
 }
 (async()=>{
   const { data:{ session } }=await sb.auth.getSession();
