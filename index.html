@@ -291,7 +291,7 @@
     <table>
       <thead>
         <tr><th>견적번호</th><th>일자</th><th>거래처</th><th>차량번호</th>
-        <th>차종</th><th class="r">합계(VAT포함)</th><th>재고확보</th><th>상태</th><th class="noprint">관리</th></tr>
+        <th>차종</th><th class="r">합계(VAT포함)</th><th>재고확보</th><th>배송</th><th>상태</th><th class="noprint">관리</th></tr>
       </thead>
       <tbody id="list-body"></tbody>
     </table>
@@ -508,6 +508,15 @@
   </div>
 </div>
 
+<!-- ══════════════ 배송 증빙 사진 뷰어 ══════════════ -->
+<div class="modal-bg" id="photo-viewer">
+  <div class="modal" style="max-width:560px">
+    <div class="modal-h"><span id="photo-viewer-title">배송 증빙 사진</span><button onclick="closePhotoViewer()">✕</button></div>
+    <div class="modal-b" id="photo-viewer-body"></div>
+    <div class="modal-f"><button class="btn gray" onclick="closePhotoViewer()">닫기</button></div>
+  </div>
+</div>
+
 <!-- ══════════════ 로딩 오버레이 ══════════════ -->
 <div id="loading-overlay" style="display:none;position:fixed;inset:0;background:#0006;z-index:9999;align-items:center;justify-content:center;flex-direction:column;gap:12px;color:#fff">
   <div style="width:36px;height:36px;border:4px solid #fff4;border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite"></div>
@@ -537,6 +546,29 @@ function invBadge(o){
   const c=COL[v]||['#555','#eef1f5'];
   return `<span style="color:${c[0]};background:${c[1]};font-weight:700;padding:3px 9px;border-radius:10px;font-size:11px;white-space:nowrap">${v}</span>`;
 }
+// 배송확인 배지 + 사진(📷N) — 실무자 페이지에서 저장된 값(읽기 전용)
+function delivCell(o){
+  const on = !!(o && o.deliveryConfirmed);
+  const badge = `<span style="color:${on?'#1f9d6b':'#8a94a6'};background:${on?'#eafaf2':'#eef1f5'};font-weight:700;padding:3px 9px;border-radius:10px;font-size:11px;white-space:nowrap">${on?'확인':'미확인'}</span>`;
+  const n = (o && o.photos && o.photos.length) || 0;
+  const cam = n ? ` <button class="btn ghost sm" style="padding:2px 7px;font-size:11px" onclick="event.stopPropagation();openPhotoViewer('${o.id}')" title="배송 증빙 사진 보기">📷${n}</button>` : '';
+  return badge + cam;
+}
+async function openPhotoViewer(id){
+  let orders; try{ orders=await getOrders(); }catch(_){ return; }
+  const o=orders.find(x=>String(x.id)===String(id)); if(!o) return;
+  const photos=o.photos||[];
+  const body=document.getElementById('photo-viewer-body');
+  body.innerHTML = photos.length
+    ? '<div style="display:flex;flex-wrap:wrap;gap:10px">'+photos.map(p=>`
+        <a href="${p.viewUrl||p.thumbUrl||'#'}" target="_blank" rel="noopener" style="display:block;width:120px;height:120px;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:#f0f3f7">
+          <img src="${p.thumbUrl||''}" referrerpolicy="no-referrer" style="width:100%;height:100%;object-fit:cover">
+        </a>`).join('')+'</div><div style="font-size:12px;color:var(--muted);margin-top:10px">썸네일을 클릭하면 원본(구글 드라이브)이 새 탭에서 열립니다.</div>'
+    : '<div class="empty">등록된 배송 증빙 사진이 없습니다.</div>';
+  document.getElementById('photo-viewer-title').textContent='배송 증빙 사진 — '+(o.plate||o.id);
+  document.getElementById('photo-viewer').classList.add('open');
+}
+function closePhotoViewer(){ document.getElementById('photo-viewer').classList.remove('open'); }
 const SUPPLIER = {
   name:'주식회사 위페어', biz:'178-88-03012',
   addr:'서울특별시 관악구 호암로22길 32, 5층 502호',
@@ -819,6 +851,7 @@ async function renderList(){
       <td>${o.model||o.brand||''}</td>
       <td class="r">${fmt(o.total||0)}</td>
       <td class="c">${invBadge(o)}</td>
+      <td class="c">${delivCell(o)}</td>
       <td class="c"><span class="${statusCls(o.status)}">${statusLabel(o.status)}</span></td>
       <td class="c noprint" style="white-space:nowrap">
         <button class="btn ghost sm" onclick="event.stopPropagation();openEditModal('${o.id}')">수정</button>
@@ -1625,7 +1658,8 @@ function fmtPhone(v){
 // ──────────── ESC로 모달 닫기 ────────────
 document.addEventListener('keydown', function(e){
   if(e.key!=='Escape') return;
-  if(document.getElementById('edit-modal').classList.contains('open'))        closeEditModal();
+  if(document.getElementById('photo-viewer').classList.contains('open'))       closePhotoViewer();
+  else if(document.getElementById('edit-modal').classList.contains('open'))        closeEditModal();
   else if(document.getElementById('invoice-modal').classList.contains('open')) closeInvoiceModal();
   else if(document.getElementById('client-edit-modal').classList.contains('open')) closeClientEdit();
   else if(document.getElementById('client-modal').classList.contains('open'))  closeClientModal();
