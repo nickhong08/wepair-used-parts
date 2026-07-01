@@ -124,6 +124,19 @@
   .bill-doc-grandtotal td{background:#1f3a5f;color:#fff;font-weight:800;font-size:13px}
   .page-break{page-break-before:always}
 
+  /* ── 이미지 라이트박스 ── */
+  .lb{display:none;position:fixed;inset:0;background:#000e;z-index:11000;flex-direction:column}
+  .lb.open{display:flex}
+  .lb-top{display:flex;align-items:center;gap:8px;padding:12px 16px;color:#fff;font-size:13px}
+  .lb-top .lb-meta{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:40vw;color:#cfd7e2}
+  .lb-top button,.lb-top a{background:#ffffff22;color:#fff;border:none;padding:8px 12px;border-radius:8px;cursor:pointer;font-size:13px;text-decoration:none;line-height:1}
+  .lb-top button:hover,.lb-top a:hover{background:#ffffff3a}
+  .lb-stage{flex:1;display:flex;align-items:center;justify-content:center;overflow:auto;padding:0 12px 16px}
+  .lb-stage img{max-width:92vw;max-height:80vh;transition:transform .15s ease;transform-origin:center;user-select:none}
+  .lb-nav{position:fixed;top:50%;transform:translateY(-50%);background:#ffffff22;color:#fff;border:none;width:50px;height:70px;font-size:30px;cursor:pointer;border-radius:10px}
+  .lb-nav:hover{background:#ffffff3a}
+  .lb-prev{left:14px}.lb-next{right:14px}
+
   /* ── 모바일 대응 ── */
   @media (max-width:760px){
     main{padding:14px}
@@ -508,13 +521,23 @@
   </div>
 </div>
 
-<!-- ══════════════ 배송 증빙 사진 뷰어 ══════════════ -->
-<div class="modal-bg" id="photo-viewer">
-  <div class="modal" style="max-width:560px">
-    <div class="modal-h"><span id="photo-viewer-title">배송 증빙 사진</span><button onclick="closePhotoViewer()">✕</button></div>
-    <div class="modal-b" id="photo-viewer-body"></div>
-    <div class="modal-f"><button class="btn gray" onclick="closePhotoViewer()">닫기</button></div>
+<!-- ══════════════ 배송 증빙 사진 뷰어 (라이트박스) ══════════════ -->
+<div id="lightbox" class="lb" onclick="if(event.target.id==='lightbox')closeLightbox()">
+  <div class="lb-top">
+    <span id="lb-count"></span>
+    <span class="lb-meta" id="lb-name"></span>
+    <span style="flex:1"></span>
+    <button onclick="lbZoom(-0.25)" title="축소">－</button>
+    <button onclick="lbZoom(0.25)" title="확대">＋</button>
+    <button onclick="lbRotate()" title="회전">↺</button>
+    <a id="lb-open" href="#" target="_blank" rel="noopener" title="드라이브 원본 열기">원본</a>
+    <button onclick="closeLightbox()">닫기 ✕</button>
   </div>
+  <button class="lb-nav lb-prev" onclick="lbPrev()">‹</button>
+  <div class="lb-stage" onclick="if(event.target.classList.contains('lb-stage'))closeLightbox()">
+    <img id="lb-img" referrerpolicy="no-referrer" onclick="event.stopPropagation();lbToggleZoom()">
+  </div>
+  <button class="lb-nav lb-next" onclick="lbNext()">›</button>
 </div>
 
 <!-- ══════════════ 로딩 오버레이 ══════════════ -->
@@ -557,18 +580,38 @@ function delivCell(o){
 async function openPhotoViewer(id){
   let orders; try{ orders=await getOrders(); }catch(_){ return; }
   const o=orders.find(x=>String(x.id)===String(id)); if(!o) return;
-  const photos=o.photos||[];
-  const body=document.getElementById('photo-viewer-body');
-  body.innerHTML = photos.length
-    ? '<div style="display:flex;flex-wrap:wrap;gap:10px">'+photos.map(p=>`
-        <a href="${p.viewUrl||p.thumbUrl||'#'}" target="_blank" rel="noopener" style="display:block;width:120px;height:120px;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:#f0f3f7">
-          <img src="${p.thumbUrl||''}" referrerpolicy="no-referrer" style="width:100%;height:100%;object-fit:cover">
-        </a>`).join('')+'</div><div style="font-size:12px;color:var(--muted);margin-top:10px">썸네일을 클릭하면 원본(구글 드라이브)이 새 탭에서 열립니다.</div>'
-    : '<div class="empty">등록된 배송 증빙 사진이 없습니다.</div>';
-  document.getElementById('photo-viewer-title').textContent='배송 증빙 사진 — '+(o.plate||o.id);
-  document.getElementById('photo-viewer').classList.add('open');
+  if(!(o.photos&&o.photos.length)){ alert('등록된 배송 증빙 사진이 없습니다.'); return; }
+  openLightbox(o.photos, 0);
 }
-function closePhotoViewer(){ document.getElementById('photo-viewer').classList.remove('open'); }
+// ── 이미지 라이트박스 (확대·회전·좌우이동·ESC) ──
+let _lb={photos:[],idx:0,scale:1,rot:0};
+function _lbBig(p){ return (p&&p.fileId) ? ('https://drive.google.com/thumbnail?id='+p.fileId+'&sz=w1600') : ((p&&(p.thumbUrl||p.viewUrl))||''); }
+function openLightbox(photos, idx){ _lb.photos=photos||[]; _lb.idx=idx||0; _lb.scale=1; _lb.rot=0; _lbRender(); document.getElementById('lightbox').classList.add('open'); }
+function closeLightbox(){ document.getElementById('lightbox').classList.remove('open'); }
+function _lbApply(){ const img=document.getElementById('lb-img'); if(!img) return; img.style.transform='scale('+_lb.scale+') rotate('+_lb.rot+'deg)'; img.style.cursor=_lb.scale>1?'zoom-out':'zoom-in'; }
+function _lbRender(){
+  const p=_lb.photos[_lb.idx]||{};
+  const img=document.getElementById('lb-img'); img.src=_lbBig(p); _lbApply();
+  document.getElementById('lb-count').textContent=_lb.photos.length?((_lb.idx+1)+' / '+_lb.photos.length):'';
+  document.getElementById('lb-name').textContent=p.name||'';
+  const a=document.getElementById('lb-open'); if(a) a.href=p.viewUrl||_lbBig(p)||'#';
+  const prev=document.querySelector('.lb-prev'), next=document.querySelector('.lb-next');
+  if(prev) prev.style.visibility=_lb.idx>0?'visible':'hidden';
+  if(next) next.style.visibility=_lb.idx<_lb.photos.length-1?'visible':'hidden';
+}
+function lbPrev(){ if(_lb.idx>0){_lb.idx--;_lb.scale=1;_lb.rot=0;_lbRender();} }
+function lbNext(){ if(_lb.idx<_lb.photos.length-1){_lb.idx++;_lb.scale=1;_lb.rot=0;_lbRender();} }
+function lbZoom(d){ _lb.scale=Math.min(4,Math.max(1,Math.round((_lb.scale+d)*100)/100)); _lbApply(); }
+function lbToggleZoom(){ _lb.scale=_lb.scale>1?1:2; _lbApply(); }
+function lbRotate(){ _lb.rot=(_lb.rot+90)%360; _lbApply(); }
+document.addEventListener('keydown',function(e){
+  if(!document.getElementById('lightbox')||!document.getElementById('lightbox').classList.contains('open')) return;
+  if(e.key==='Escape'){ e.stopPropagation(); closeLightbox(); }
+  else if(e.key==='ArrowLeft') lbPrev();
+  else if(e.key==='ArrowRight') lbNext();
+  else if(e.key==='+'||e.key==='=') lbZoom(0.25);
+  else if(e.key==='-') lbZoom(-0.25);
+});
 const SUPPLIER = {
   name:'주식회사 위페어', biz:'178-88-03012',
   addr:'서울특별시 관악구 호암로22길 32, 5층 502호',
@@ -1658,8 +1701,8 @@ function fmtPhone(v){
 // ──────────── ESC로 모달 닫기 ────────────
 document.addEventListener('keydown', function(e){
   if(e.key!=='Escape') return;
-  if(document.getElementById('photo-viewer').classList.contains('open'))       closePhotoViewer();
-  else if(document.getElementById('edit-modal').classList.contains('open'))        closeEditModal();
+  if(document.getElementById('lightbox').classList.contains('open')) return;   // 라이트박스는 자체 처리
+  if(document.getElementById('edit-modal').classList.contains('open'))        closeEditModal();
   else if(document.getElementById('invoice-modal').classList.contains('open')) closeInvoiceModal();
   else if(document.getElementById('client-edit-modal').classList.contains('open')) closeClientEdit();
   else if(document.getElementById('client-modal').classList.contains('open'))  closeClientModal();

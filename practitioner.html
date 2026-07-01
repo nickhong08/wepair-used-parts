@@ -96,6 +96,18 @@
   .photo-thumb img{width:100%;height:100%;object-fit:cover;cursor:pointer;display:block}
   .photo-del{position:absolute;top:2px;right:2px;background:#000a;color:#fff;border:none;border-radius:50%;width:20px;height:20px;cursor:pointer;font-size:11px;line-height:1}
   .photo-cnt{font-size:10px;color:var(--ok);font-weight:700;margin-top:2px}
+  /* 이미지 라이트박스 */
+  .lb{display:none;position:fixed;inset:0;background:#000e;z-index:11000;flex-direction:column}
+  .lb.open{display:flex}
+  .lb-top{display:flex;align-items:center;gap:8px;padding:12px 16px;color:#fff;font-size:13px}
+  .lb-top .lb-meta{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:40vw;color:#cfd7e2}
+  .lb-top button,.lb-top a{background:#ffffff22;color:#fff;border:none;padding:8px 12px;border-radius:8px;cursor:pointer;font-size:13px;text-decoration:none;line-height:1}
+  .lb-top button:hover,.lb-top a:hover{background:#ffffff3a}
+  .lb-stage{flex:1;display:flex;align-items:center;justify-content:center;overflow:auto;padding:0 12px 16px}
+  .lb-stage img{max-width:92vw;max-height:80vh;transition:transform .15s ease;transform-origin:center;user-select:none}
+  .lb-nav{position:fixed;top:50%;transform:translateY(-50%);background:#ffffff22;color:#fff;border:none;width:50px;height:70px;font-size:30px;cursor:pointer;border-radius:10px}
+  .lb-nav:hover{background:#ffffff3a}
+  .lb-prev{left:14px}.lb-next{right:14px}
   /* 로딩 */
   #loading-overlay{display:none;position:fixed;inset:0;background:#0006;z-index:9999;align-items:center;justify-content:center;flex-direction:column;gap:12px;color:#fff}
   @keyframes spin{to{transform:rotate(360deg)}}
@@ -311,6 +323,25 @@
 <div id="loading-overlay">
   <div style="width:36px;height:36px;border:4px solid #fff4;border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite"></div>
   <div id="loading-msg" style="font-size:14px;font-weight:600">처리 중...</div>
+</div>
+
+<!-- 이미지 라이트박스 -->
+<div id="lightbox" class="lb" onclick="if(event.target.id==='lightbox')closeLightbox()">
+  <div class="lb-top">
+    <span id="lb-count"></span>
+    <span class="lb-meta" id="lb-name"></span>
+    <span style="flex:1"></span>
+    <button onclick="lbZoom(-0.25)" title="축소">－</button>
+    <button onclick="lbZoom(0.25)" title="확대">＋</button>
+    <button onclick="lbRotate()" title="회전">↺</button>
+    <a id="lb-open" href="#" target="_blank" rel="noopener" title="드라이브 원본 열기">원본</a>
+    <button onclick="closeLightbox()">닫기 ✕</button>
+  </div>
+  <button class="lb-nav lb-prev" onclick="lbPrev()">‹</button>
+  <div class="lb-stage" onclick="if(event.target.classList.contains('lb-stage'))closeLightbox()">
+    <img id="lb-img" referrerpolicy="no-referrer" onclick="event.stopPropagation();lbToggleZoom()">
+  </div>
+  <button class="lb-nav lb-next" onclick="lbNext()">›</button>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -739,7 +770,7 @@ async function renderModalPhotos(){
   if(!modalPhotos.length){ wrap.innerHTML='<span style="color:var(--muted);font-size:12px">업로드된 사진이 없습니다.</span>'; return; }
   wrap.innerHTML=modalPhotos.map((p,i)=>`
     <div class="photo-thumb">
-      <img src="${p.thumbUrl||''}" referrerpolicy="no-referrer" onclick="window.open('${(p.viewUrl||p.thumbUrl||'')}','_blank')" title="${(p.name||'').replace(/"/g,'&quot;')}">
+      <img src="${p.thumbUrl||''}" referrerpolicy="no-referrer" onclick="openLightbox(modalPhotos, ${i})" title="${(p.name||'').replace(/"/g,'&quot;')}">
       <button class="photo-del" title="삭제" onclick="deleteModalPhoto(${i})">✕</button>
     </div>`).join('');
 }
@@ -753,6 +784,37 @@ async function deleteModalPhoto(i){
   });
   await renderModalPhotos(); renderGrid();
 }
+
+// ── 이미지 라이트박스 (확대·회전·좌우이동·ESC) ──
+let _lb={photos:[],idx:0,scale:1,rot:0};
+function _lbBig(p){ return (p&&p.fileId) ? ('https://drive.google.com/thumbnail?id='+p.fileId+'&sz=w1600') : ((p&&(p.thumbUrl||p.viewUrl))||''); }
+function openLightbox(photos, idx){ _lb.photos=photos||[]; _lb.idx=idx||0; _lb.scale=1; _lb.rot=0; _lbRender(); document.getElementById('lightbox').classList.add('open'); }
+function closeLightbox(){ document.getElementById('lightbox').classList.remove('open'); }
+function _lbApply(){ const img=document.getElementById('lb-img'); if(!img) return; img.style.transform='scale('+_lb.scale+') rotate('+_lb.rot+'deg)'; img.style.cursor=_lb.scale>1?'zoom-out':'zoom-in'; }
+function _lbRender(){
+  const p=_lb.photos[_lb.idx]||{};
+  const img=document.getElementById('lb-img'); img.src=_lbBig(p); _lbApply();
+  document.getElementById('lb-count').textContent=_lb.photos.length?((_lb.idx+1)+' / '+_lb.photos.length):'';
+  document.getElementById('lb-name').textContent=p.name||'';
+  const a=document.getElementById('lb-open'); if(a) a.href=p.viewUrl||_lbBig(p)||'#';
+  const prev=document.querySelector('.lb-prev'), next=document.querySelector('.lb-next');
+  if(prev) prev.style.visibility=_lb.idx>0?'visible':'hidden';
+  if(next) next.style.visibility=_lb.idx<_lb.photos.length-1?'visible':'hidden';
+}
+function lbPrev(){ if(_lb.idx>0){_lb.idx--;_lb.scale=1;_lb.rot=0;_lbRender();} }
+function lbNext(){ if(_lb.idx<_lb.photos.length-1){_lb.idx++;_lb.scale=1;_lb.rot=0;_lbRender();} }
+function lbZoom(d){ _lb.scale=Math.min(4,Math.max(1,Math.round((_lb.scale+d)*100)/100)); _lbApply(); }
+function lbToggleZoom(){ _lb.scale=_lb.scale>1?1:2; _lbApply(); }
+function lbRotate(){ _lb.rot=(_lb.rot+90)%360; _lbApply(); }
+document.addEventListener('keydown',function(e){
+  if(!document.getElementById('lightbox')||!document.getElementById('lightbox').classList.contains('open')) return;
+  if(e.key==='Escape'){ e.stopPropagation(); closeLightbox(); }
+  else if(e.key==='ArrowLeft') lbPrev();
+  else if(e.key==='ArrowRight') lbNext();
+  else if(e.key==='+'||e.key==='=') lbZoom(0.25);
+  else if(e.key==='-') lbZoom(-0.25);
+});
+
 function renderModalRows(){
   const tb=document.getElementById('em-rows'); if(!tb) return; tb.innerHTML='';
   modalRows.forEach((r,i)=>{
@@ -837,6 +899,7 @@ function fmtPhone(v){ const d=String(v).replace(/[^0-9]/g,'').slice(0,11);
 
 document.addEventListener('keydown',e=>{
   if(e.key!=='Escape') return;
+  if(document.getElementById('lightbox').classList.contains('open')) return;   // 라이트박스는 자체 처리
   if(document.getElementById('edit-modal').classList.contains('open')) closeEditModal();
   else if(document.getElementById('client-modal').classList.contains('open')) closeClientModal();
 });
