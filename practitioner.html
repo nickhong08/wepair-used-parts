@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>위페어 중고부품 · 실무 입력</title>
+<style>
+  :root{--navy:#1f3a5f;--blue:#2c6ecb;--bg:#f4f6f9;--line:#dde3ea;--muted:#7a8699;--ok:#1f9d6b;--warn:#d9822b;--red:#d64545;--purple:#7c3aed}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;background:var(--bg);color:#1c2533;font-size:14px}
+  header{background:#0a0a0a;color:#fff;padding:14px 22px;display:flex;align-items:center;gap:16px}
+  header h1{font-size:15px;margin:0;font-weight:600;color:#e8edf3}
+  header .tag{font-size:11px;background:#ffffff1a;padding:3px 9px;border-radius:10px;color:#cfd7e2}
+  header .spacer{flex:1}
+  header a.tool-link{font-size:12px;color:#cfd7e2;text-decoration:none;background:#ffffff1a;padding:6px 12px;border-radius:8px}
+  header a.tool-link:hover{background:#ffffff33}
+  main{padding:22px;max-width:1320px;margin:0 auto}
+  .card{background:#fff;border:1px solid var(--line);border-radius:10px;padding:20px;margin-bottom:18px}
+  .card h2{margin:0 0 14px;font-size:15px;color:var(--navy);display:flex;align-items:center;gap:8px}
+  .card h2 .hint{font-weight:500;font-size:12px;color:var(--muted)}
+  .grid{display:grid;gap:12px}
+  .g2{grid-template-columns:1fr 1fr}.g3{grid-template-columns:1fr 1fr 1fr}.g4{grid-template-columns:repeat(4,1fr)}
+  label{display:block;font-size:12px;color:var(--muted);margin-bottom:4px;font-weight:600}
+  input,select,textarea{width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:7px;font-size:14px;font-family:inherit;background:#fff;transition:.15s}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--blue)}
+  button.btn{background:var(--blue);color:#fff;border:none;padding:10px 18px;border-radius:7px;font-size:14px;font-weight:700;cursor:pointer;transition:.15s}
+  button.btn:hover{opacity:.88}
+  button.btn.ghost{background:#fff;color:var(--navy);border:1px solid var(--line)}
+  button.btn.ghost:hover{border-color:var(--blue);color:var(--blue)}
+  button.btn.gray{background:#eef1f5;color:#445;border:1px solid var(--line)}
+  button.btn.red{background:var(--red);color:#fff;border:none}
+  button.btn.sm{padding:5px 11px;font-size:12px}
+  .row-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;align-items:center}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{border:1px solid var(--line);padding:8px 10px}
+  th{background:#f0f3f7;color:var(--navy);font-weight:700;font-size:12px;text-align:center;white-space:nowrap}
+  td{vertical-align:middle}
+  td.c{text-align:center}td.r{text-align:right}
+  td input,td select{border:none;border-radius:0;padding:6px;width:100%;background:transparent;font-family:inherit;font-size:13px}
+  td input:focus,td select:focus{outline:1px solid var(--blue);background:#fff}
+  td input.num{text-align:right}
+  .totals{display:flex;justify-content:flex-end;margin-top:14px}
+  .totals table{width:320px}
+  .totals td{padding:8px 14px}
+  .totals td:first-child{background:#f0f3f7;font-weight:700;text-align:center;color:var(--navy)}
+  .totals td:last-child{text-align:right;font-variant-numeric:tabular-nums}
+  .totals tr.fin td{font-weight:800;font-size:14px}
+  .empty{padding:40px;text-align:center;color:var(--muted);font-size:13px}
+  /* 재고확보 상태 색상 (엑셀 드롭다운과 동일 느낌) */
+  .iv-sel{border:1px solid var(--line);border-radius:6px;padding:5px 6px;font-weight:700;font-size:12px;cursor:pointer}
+  .ivc0{background:#f3e8ff;color:#7c3aed}   /* 재고확인중 */
+  .ivc1{background:#fff8e1;color:#b7791f}   /* 확인 */
+  .ivc2{background:#fdecec;color:#d64545}   /* 재고없음 */
+  .ivc3{background:#eafaf2;color:#1f9d6b}   /* 납품 */
+  /* KPI */
+  .kpi{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:18px}
+  .kpi .box{background:#fff;border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+  .kpi .box .k{font-size:12px;color:var(--muted);font-weight:600}
+  .kpi .box .v{font-size:22px;font-weight:800;color:var(--navy);margin-top:6px}
+  /* Search bar */
+  .search-bar{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;align-items:flex-end}
+  .search-bar .sf{flex:1;min-width:130px}
+  /* Modal */
+  .modal-bg{display:none;position:fixed;inset:0;background:#0006;z-index:1000;align-items:center;justify-content:center}
+  .modal-bg.open{display:flex}
+  .modal{background:#fff;border-radius:12px;width:92%;max-width:720px;max-height:90vh;overflow-y:auto}
+  .modal-h{background:var(--navy);color:#fff;padding:16px 20px;font-weight:700;border-radius:12px 12px 0 0;display:flex;justify-content:space-between;align-items:center}
+  .modal-h button{background:none;border:none;color:#fff;font-size:18px;cursor:pointer;line-height:1}
+  .modal-b{padding:20px}
+  .modal-f{padding:14px 20px;display:flex;justify-content:flex-end;gap:8px;border-top:1px solid var(--line)}
+  input[type=checkbox]{width:auto;accent-color:var(--blue);transform:scale(1.2)}
+  /* 로딩 */
+  #loading-overlay{display:none;position:fixed;inset:0;background:#0006;z-index:9999;align-items:center;justify-content:center;flex-direction:column;gap:12px;color:#fff}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  /* 잠금 화면 */
+  #lock-screen{position:fixed;inset:0;background:#0a0a0a;display:flex;align-items:center;justify-content:center;z-index:9999;flex-direction:column;gap:14px}
+  #lock-screen .lock-logo{font-size:13px;font-weight:600;color:#9aa6b4;letter-spacing:1px;margin-bottom:6px}
+  #lock-screen h2{color:#e8edf3;font-size:20px;font-weight:700;margin:0}
+  #lock-screen p{color:#7a8699;font-size:13px;margin:0}
+  #lock-screen input{width:260px;padding:13px;border-radius:8px;border:1px solid #2a2a2a;background:#161616;color:#fff;font-size:15px;text-align:left;outline:none;transition:border .15s}
+  #lock-screen input:focus{border-color:#2c6ecb}
+  #lock-screen button{width:260px;padding:13px;border-radius:8px;background:#2c6ecb;color:#fff;border:none;font-size:14px;font-weight:600;cursor:pointer}
+  #lock-err{color:#d64545;font-size:13px;min-height:18px;text-align:center}
+  @media (max-width:760px){
+    main{padding:14px}.g2,.g3,.g4{grid-template-columns:1fr!important}
+    .kpi{grid-template-columns:1fr 1fr}.card{overflow-x:auto!important}
+    .totals,.totals table{width:100%}
+  }
+</style>
+</head>
+<body>
+
+<!-- 로그인 -->
+<div id="lock-screen">
+  <div class="lock-logo">WEPAIR</div>
+  <h2>중고부품 · 실무 입력</h2>
+  <p>직원 로그인</p>
+  <input id="login-id" type="text" placeholder="아이디" autocomplete="username"
+         onkeydown="if(event.key==='Enter')document.getElementById('login-pw').focus()">
+  <input id="login-pw" type="password" placeholder="비밀번호" autocomplete="current-password"
+         onkeydown="if(event.key==='Enter')doLogin()">
+  <div id="lock-err"></div>
+  <button onclick="doLogin()">로그인</button>
+</div>
+
+<header>
+  <h1>위페어 중고부품 · 실무 입력</h1>
+  <span class="tag">재고·납품·청구 관리</span>
+  <span class="spacer"></span>
+  <a class="tool-link" href="index.html">운영툴 →</a>
+  <span id="who" style="font-size:12px;color:#cfd7e2"></span>
+  <button onclick="doLogout()" style="background:#ffffff1a;color:#e8edf3;border:none;padding:6px 12px;border-radius:8px;cursor:pointer;font-size:12px">로그아웃</button>
+</header>
+
+<main>
+
+<!-- ══════════════ 빠른 등록 ══════════════ -->
+<div class="card">
+  <h2>＋ 견적 의뢰 등록 <span class="hint">— 차량 1건 입력 → 운영툴 주문으로 자동 등록됩니다</span></h2>
+  <div class="grid g4" style="margin-bottom:12px">
+    <div><label>견적번호</label><input id="o-id" readonly style="background:#f0f3f7;color:var(--muted)"></div>
+    <div><label>견적의뢰일</label><input id="o-date" type="date"></div>
+    <div><label>담당자</label><input id="o-manager"></div>
+    <div><label>재고확보 상태</label>
+      <select id="o-inv">
+        <option value="재고확인중">재고확인중</option>
+        <option value="확인">확인</option>
+        <option value="재고없음">재고없음</option>
+        <option value="납품">납품</option>
+      </select>
+    </div>
+  </div>
+  <div class="grid g4" style="margin-bottom:12px">
+    <div><label>납품처 (거래처)</label>
+      <select id="o-client" onchange="onClientSelect()"><option value="">— 선택 —</option></select>
+    </div>
+    <div style="display:flex;align-items:flex-end"><button class="btn ghost sm" onclick="openClientModal()">＋ 새 거래처</button></div>
+    <div><label>차량번호</label><input id="o-plate" placeholder="예) 280다6079"></div>
+    <div><label>차대번호 (선택)</label><input id="o-vin" placeholder="선택 입력"></div>
+  </div>
+  <div class="grid g2" style="margin-bottom:4px">
+    <div><label>브랜드</label>
+      <input id="o-brand" list="brand-list" placeholder="예) 벤츠" autocomplete="off">
+    </div>
+    <div><label>차량정보 (차종)</label><input id="o-model" placeholder="예) W214"></div>
+  </div>
+
+  <div style="margin-top:16px">
+    <label style="margin-bottom:8px">주요 부품</label>
+    <table>
+      <thead>
+        <tr><th style="width:36px">No</th><th>품명</th><th style="width:70px">수량</th>
+          <th style="width:140px">납품단가<br><span style="font-weight:400;font-size:11px">(VAT별도)</span></th>
+          <th style="width:140px">총 납품가</th><th style="width:110px">순서/삭제</th></tr>
+      </thead>
+      <tbody id="items-body"></tbody>
+    </table>
+    <div class="row-actions"><button class="btn ghost sm" onclick="addRow()">＋ 행 추가</button></div>
+    <div class="totals">
+      <table>
+        <tr><td>공급가액</td><td id="t-sub">0원</td></tr>
+        <tr><td>부가세 (10%)</td><td id="t-vat">0원</td></tr>
+        <tr class="fin"><td>합계 (VAT 포함)</td><td id="t-tot">0원</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div style="margin-top:12px"><label>특이사항</label><textarea id="o-note" rows="2" placeholder="예) 사제 튜닝 범퍼 / 사진 요청"></textarea></div>
+
+  <div class="row-actions">
+    <button class="btn" onclick="saveNewOrder()">💾 등록</button>
+    <button class="btn gray" onclick="initForm()">초기화</button>
+    <span id="save-msg" style="font-size:12px;color:var(--ok);margin-left:8px"></span>
+  </div>
+</div>
+
+<!-- ══════════════ 실무 대장 ══════════════ -->
+<div class="kpi" id="kpi"></div>
+
+<div class="search-bar">
+  <div class="sf"><label>거래처</label><input id="f-client" placeholder="검색" oninput="renderGrid()"></div>
+  <div class="sf"><label>차량번호</label><input id="f-plate" placeholder="검색" oninput="renderGrid()"></div>
+  <div class="sf"><label>재고확보 상태</label>
+    <select id="f-inv" onchange="renderGrid()">
+      <option value="">전체</option>
+      <option value="재고확인중">재고확인중</option>
+      <option value="확인">확인</option>
+      <option value="재고없음">재고없음</option>
+      <option value="납품">납품</option>
+    </select>
+  </div>
+  <div class="sf"><label>시작일</label><input id="f-from" type="date" onchange="renderGrid()"></div>
+  <div class="sf"><label>종료일</label><input id="f-to" type="date" onchange="renderGrid()"></div>
+  <button class="btn sm ghost" onclick="clearFilters()">초기화</button>
+</div>
+
+<div class="card" style="padding:0;overflow-x:auto">
+  <table>
+    <thead>
+      <tr>
+        <th>의뢰일</th><th>거래처</th><th>차량번호</th><th>차명</th><th>주요 부품</th>
+        <th class="r">합계(VAT)</th><th style="width:120px">재고확보</th>
+        <th style="width:64px">배송<br>확인</th><th style="width:150px">반품/회수</th>
+        <th style="width:64px">결재<br>확인</th><th style="width:110px">관리</th>
+      </tr>
+    </thead>
+    <tbody id="grid-body"></tbody>
+  </table>
+  <div id="grid-empty" class="empty" style="display:none">등록된 건이 없습니다.</div>
+</div>
+
+</main>
+
+<!-- 브랜드 자동완성 -->
+<datalist id="brand-list">
+  <option value="벤츠"></option><option value="BMW"></option><option value="아우디"></option><option value="폭스바겐"></option>
+  <option value="렉서스"></option><option value="토요타"></option><option value="혼다"></option><option value="닛산"></option>
+  <option value="포르쉐"></option><option value="볼보"></option><option value="재규어"></option><option value="랜드로버"></option>
+  <option value="테슬라"></option><option value="현대"></option><option value="기아"></option><option value="제네시스"></option><option value="기타"></option>
+</datalist>
+<!-- 부품명 자동완성 (운영툴 공통 목록) -->
+<datalist id="parts-list"></datalist>
+
+<!-- 새 거래처 모달 -->
+<div class="modal-bg" id="client-modal">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-h"><span>새 거래처 등록</span><button onclick="closeClientModal()">✕</button></div>
+    <div class="modal-b">
+      <div class="grid" style="gap:12px">
+        <div><label>업체명(상호) *</label><input id="mc-name" placeholder="예) 클린파츠"></div>
+        <div><label>사업자번호</label><input id="mc-biz" placeholder="000-00-00000" inputmode="numeric" maxlength="12" oninput="this.value=fmtBiz(this.value)"></div>
+        <div><label>담당자 연락처</label><input id="mc-tel" placeholder="010-0000-0000" inputmode="numeric" maxlength="13" oninput="this.value=fmtPhone(this.value)"></div>
+        <div><label>주소</label><input id="mc-addr"></div>
+      </div>
+    </div>
+    <div class="modal-f">
+      <button class="btn ghost" onclick="closeClientModal()">취소</button>
+      <button class="btn" onclick="addClientFromModal()">등록</button>
+    </div>
+  </div>
+</div>
+
+<!-- 수정 모달 -->
+<div class="modal-bg" id="edit-modal">
+  <div class="modal">
+    <div class="modal-h"><span id="em-title">건 상세</span><button onclick="closeEditModal()">✕</button></div>
+    <div class="modal-b" id="em-body"></div>
+    <div class="modal-f">
+      <button class="btn red" onclick="deleteFromModal()" style="margin-right:auto">삭제</button>
+      <button class="btn" onclick="saveEditModal()">저장</button>
+      <button class="btn gray" onclick="closeEditModal()">닫기</button>
+    </div>
+  </div>
+</div>
+
+<!-- 로딩 -->
+<div id="loading-overlay">
+  <div style="width:36px;height:36px;border:4px solid #fff4;border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite"></div>
+  <div id="loading-msg" style="font-size:14px;font-weight:600">처리 중...</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+// ──────────── 상수 ────────────
+const SUPABASE_URL = 'https://iomkulgjywrkueturevn.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_ffAW1CmEr0cMvgL98ZlRSg_TIypVfvm';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const LOGIN_DOMAIN = '@wepair.local';
+// 재고확보 상태 → 색상 클래스
+const INV_LIST = ['재고확인중','확인','재고없음','납품'];
+function invCls(v){ const i=INV_LIST.indexOf(v); return 'ivc'+(i<0?0:i); }
+
+// ──────────── 캐시 ────────────
+const _cache = { orders:null, clients:null, parts:null };
+async function withLoading(msg, fn){
+  const ov=document.getElementById('loading-overlay');
+  document.getElementById('loading-msg').textContent=msg; ov.style.display='flex';
+  try{ return await fn(); } catch(e){ alert('오류: '+e.message); throw e; } finally{ ov.style.display='none'; }
+}
+function _chk(res){ if(res && res.error) throw new Error(res.error.message||String(res.error)); return res?res.data:null; }
+
+async function getOrders(){
+  if(!_cache.orders){
+    const data=_chk(await sb.from('orders').select('*'))||[];
+    data.forEach(o=>{ o.date=fmtDate(o.date); });
+    _cache.orders=data;
+  }
+  return _cache.orders;
+}
+async function getClients(){ if(!_cache.clients) _cache.clients=_chk(await sb.from('clients').select('*'))||[]; return _cache.clients; }
+async function getParts(){ if(!_cache.parts) _cache.parts=_chk(await sb.from('parts').select('*'))||[]; return _cache.parts; }
+async function saveOrderAPI(order){ _chk(await sb.from('orders').upsert(order)); _cache.orders=null; }
+// 인라인 부분수정: update()로 넘긴 컬럼만 바꿈 (upsert와 달리 나머지 값 유지)
+async function updateOrderAPI(id, patch){ _chk(await sb.from('orders').update(patch).eq('id', id)); _cache.orders=null; }
+async function deleteOrderAPI(id){ _chk(await sb.from('orders').delete().eq('id', id)); _cache.orders=null; }
+async function saveClientAPI(c){ _chk(await sb.from('clients').upsert(c)); _cache.clients=null; }
+
+// ──────────── 견적번호 (운영툴과 동일 규칙) ────────────
+async function genId(){
+  const d=new Date().toISOString().slice(0,10).replace(/-/g,'');
+  let maxSeq=0;
+  try{
+    (await getOrders()).forEach(o=>{
+      const oid=String(o.id||'');
+      if(oid.includes('WP-U-'+d)){ const seq=parseInt(oid.split('-').pop()||'0'); if(seq>maxSeq) maxSeq=seq; }
+    });
+  }catch(_){}
+  return 'WP-U-'+d+'-'+String(maxSeq+1).padStart(3,'0');
+}
+
+// ──────────── 부품명 자동완성 ────────────
+async function buildPartsDatalist(){
+  let parts=[]; try{ parts=await getParts(); }catch(_){ return; }
+  parts=parts.slice().sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''),'ko'));
+  const dl=document.getElementById('parts-list'); if(!dl) return;
+  dl.innerHTML=parts.map(p=>`<option value="${(p.name||'').replace(/"/g,'&quot;')}"></option>`).join('');
+}
+
+// ──────────── 입력 폼 ────────────
+let rows=[];
+async function initForm(){
+  document.getElementById('o-id').value=await genId();
+  document.getElementById('o-date').value=today();
+  document.getElementById('o-manager').value=localStorage.getItem('wp_last_manager')||'';
+  document.getElementById('o-inv').value='재고확인중';
+  document.getElementById('o-plate').value='';
+  document.getElementById('o-vin').value='';
+  document.getElementById('o-brand').value='';
+  document.getElementById('o-model').value='';
+  document.getElementById('o-note').value='';
+  rows=[]; addRow(); calcTotals();
+  await refreshClientDropdown();
+  const last=localStorage.getItem('wp_last_client');
+  const csel=document.getElementById('o-client');
+  if(last && [...csel.options].some(op=>op.value===last)){ csel.value=last; onClientSelect(); }
+}
+async function refreshClientDropdown(){
+  const sel=document.getElementById('o-client'); const cur=sel.value;
+  try{
+    const clients=(await getClients()).slice().sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''),'ko'));
+    sel.innerHTML='<option value="">— 선택 —</option>';
+    clients.forEach(c=>sel.appendChild(new Option(c.name,c.id)));
+    if(cur) sel.value=cur;
+  }catch(_){}
+}
+function onClientSelect(){ /* 상호 단일 관리 — 별도 표시 없음 */ }
+
+function addRow(){ rows.push({name:'',qty:1,price:0}); renderRows(); }
+function removeRow(i){ rows.splice(i,1); if(!rows.length) rows.push({name:'',qty:1,price:0}); renderRows(); }
+function moveRow(i,dir){ const j=i+dir; if(j<0||j>=rows.length) return; [rows[i],rows[j]]=[rows[j],rows[i]]; renderRows(); }
+function onPriceInput(el,i){ const d=el.value.replace(/[^0-9]/g,''); const n=d?parseInt(d,10):0; rows[i].price=n; el.value=d?n.toLocaleString('ko-KR'):''; calcTotals(); }
+function focusNextItemName(i){ if(i>=rows.length-1) addRow(); const tb=document.getElementById('items-body'); const next=tb.querySelectorAll('tr')[i+1]; if(next){ const inp=next.querySelector('input'); if(inp) inp.focus(); } }
+function renderRows(){
+  const tb=document.getElementById('items-body'); tb.innerHTML='';
+  rows.forEach((r,i)=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`
+      <td class="c">${i+1}</td>
+      <td><input value="${(r.name||'').replace(/"/g,'&quot;')}" list="parts-list" oninput="rows[${i}].name=this.value" placeholder="부품명"
+            onkeydown="if(event.key==='Enter'&&!event.isComposing&&event.keyCode!==229){event.preventDefault();focusNextItemName(${i});}"></td>
+      <td><input class="num" type="number" min="1" value="${r.qty||1}" oninput="rows[${i}].qty=+this.value||1;calcTotals()"></td>
+      <td><input class="num" inputmode="numeric" value="${r.price?fmtN(r.price):''}" placeholder="0" oninput="onPriceInput(this,${i})"></td>
+      <td class="r" id="rt-${i}">${fmt((r.qty||1)*(r.price||0))}</td>
+      <td class="c" style="white-space:nowrap">
+        <button class="btn gray sm" onclick="moveRow(${i},-1)">▲</button>
+        <button class="btn gray sm" onclick="moveRow(${i},1)">▼</button>
+        <button class="btn gray sm" onclick="removeRow(${i})">✕</button></td>`;
+    tb.appendChild(tr);
+  });
+  calcTotals();
+}
+function calcTotals(){
+  let sub=0;
+  rows.forEach((r,i)=>{ const t=(r.qty||1)*(r.price||0); sub+=t; const el=document.getElementById('rt-'+i); if(el) el.textContent=fmt(t); });
+  const vat=Math.round(sub*.1);
+  setText('t-sub',fmt(sub)); setText('t-vat',fmt(vat)); setText('t-tot',fmt(sub+vat));
+}
+
+async function saveNewOrder(){
+  const sel=document.getElementById('o-client');
+  const cid=sel.value;
+  const cname=cid?sel.options[sel.selectedIndex].text:'';
+  if(!cname){ alert('납품처(거래처)를 선택해주세요.'); return; }
+  const plate=document.getElementById('o-plate').value.trim();
+  const vin=document.getElementById('o-vin').value.trim();
+  if(!plate && !vin){ alert('차량번호 또는 차대번호를 입력해주세요.'); return; }
+  if(!rows.some(r=>r.name)){ alert('부품 품목을 1개 이상 입력해주세요.'); return; }
+  const cleanRows=rows.filter(r=>r.name);
+  const sub=cleanRows.reduce((a,r)=>a+(r.qty||1)*(r.price||0),0);
+  const vat=Math.round(sub*.1);
+  const inv=document.getElementById('o-inv').value;
+  let clients=[]; try{ clients=await getClients(); }catch(_){}
+  const c=clients.find(x=>String(x.id)===String(cid));
+  const o={
+    id:document.getElementById('o-id').value,
+    date:document.getElementById('o-date').value,
+    manager:document.getElementById('o-manager').value,
+    status: inv==='납품'?1:0,               // 납품이면 곧바로 주문확정 → 운영툴 청구관리에 노출
+    clientId:cid, clientName:cname, clientAddr:c?(c.addr||''):'',
+    plate, vin,
+    brand:document.getElementById('o-brand').value,
+    model:document.getElementById('o-model').value,
+    items:JSON.parse(JSON.stringify(cleanRows)),
+    sub, vat, total:sub+vat,
+    note:document.getElementById('o-note').value,
+    inventoryStatus:inv,
+    deliveredDate: inv==='납품'?today():null,
+    deliveryConfirmed:false,
+    returnStatus:'',
+    returnNote:'',
+    settleConfirmed:false
+  };
+  await withLoading('등록 중...', ()=>saveOrderAPI(o));
+  localStorage.setItem('wp_last_manager', o.manager||'');
+  localStorage.setItem('wp_last_client', o.clientId||'');
+  const msg=document.getElementById('save-msg'); msg.textContent='✓ 등록 완료 ('+o.id+')'; setTimeout(()=>msg.textContent='',3000);
+  await initForm(); renderGrid();
+}
+
+// ──────────── 새 거래처 ────────────
+function openClientModal(){ ['mc-name','mc-biz','mc-tel','mc-addr'].forEach(id=>document.getElementById(id).value=''); document.getElementById('client-modal').classList.add('open'); }
+function closeClientModal(){ document.getElementById('client-modal').classList.remove('open'); }
+async function addClientFromModal(){
+  const name=document.getElementById('mc-name').value.trim();
+  if(!name){ alert('업체명을 입력해주세요.'); return; }
+  const client={ id:'C'+Date.now(), name,
+    biz:document.getElementById('mc-biz').value, addr:document.getElementById('mc-addr').value,
+    tel:document.getElementById('mc-tel').value, email:'', bank:'', account:'', createdAt:today() };
+  await withLoading('등록 중...', ()=>saveClientAPI(client));
+  closeClientModal(); await refreshClientDropdown();
+  document.getElementById('o-client').value=client.id;
+}
+
+// ──────────── 실무 대장 (그리드) ────────────
+function partsSummary(o){
+  const names=(o.items||[]).map(r=>r.name).filter(Boolean);
+  const s=names.join(', ');
+  return s.length>28 ? s.slice(0,28)+'…' : (s||'—');
+}
+function clearFilters(){ ['f-client','f-plate','f-from','f-to'].forEach(id=>document.getElementById(id).value=''); document.getElementById('f-inv').value=''; renderGrid(); }
+
+async function renderGrid(){
+  let all; try{ all=await getOrders(); }catch(_){ return; }
+  const fC=(document.getElementById('f-client').value||'').toLowerCase();
+  const fP=(document.getElementById('f-plate').value||'').toLowerCase();
+  const fI=document.getElementById('f-inv').value;
+  const fF=document.getElementById('f-from').value;
+  const fT=document.getElementById('f-to').value;
+
+  const list=all.filter(o=>{
+    if(fC && !(o.clientName||'').toLowerCase().includes(fC)) return false;
+    if(fP && !(o.plate||'').toLowerCase().includes(fP)) return false;
+    if(fI && (o.inventoryStatus||'재고확인중')!==fI) return false;
+    if(fF && o.date<fF) return false;
+    if(fT && o.date>fT) return false;
+    return true;
+  }).sort((a,b)=>String(b.date).localeCompare(String(a.date))||String(b.id).localeCompare(String(a.id)));
+
+  // KPI
+  const cnt={전체:all.length,재고확인중:0,확인:0,재고없음:0,납품:0};
+  all.forEach(o=>{ const s=o.inventoryStatus||'재고확인중'; if(cnt[s]!==undefined) cnt[s]++; });
+  document.getElementById('kpi').innerHTML=`
+    <div class="box"><div class="k">전체</div><div class="v">${cnt.전체}건</div></div>
+    <div class="box"><div class="k">재고확인중</div><div class="v" style="color:#7c3aed">${cnt.재고확인중}</div></div>
+    <div class="box"><div class="k">확인</div><div class="v" style="color:#b7791f">${cnt.확인}</div></div>
+    <div class="box"><div class="k">재고없음</div><div class="v" style="color:#d64545">${cnt.재고없음}</div></div>
+    <div class="box"><div class="k">납품</div><div class="v" style="color:#1f9d6b">${cnt.납품}</div></div>`;
+
+  const tb=document.getElementById('grid-body'), empty=document.getElementById('grid-empty');
+  tb.innerHTML='';
+  if(!list.length){ empty.style.display=''; return; }
+  empty.style.display='none';
+  list.forEach(o=>{
+    const inv=o.inventoryStatus||'재고확인중';
+    const car=[o.brand,o.model].filter(Boolean).join(' ')||'—';
+    const opts=INV_LIST.map(v=>`<option value="${v}" ${v===inv?'selected':''}>${v}</option>`).join('');
+    const tr=document.createElement('tr');
+    tr.innerHTML=`
+      <td class="c">${o.date||''}</td>
+      <td>${o.clientName||''}</td>
+      <td class="c">${o.plate||''}</td>
+      <td>${car}</td>
+      <td title="${(o.items||[]).map(r=>r.name).filter(Boolean).join(', ')}">${partsSummary(o)}</td>
+      <td class="r">${fmt(o.total||0)}</td>
+      <td class="c"><select class="iv-sel ${invCls(inv)}" onchange="onInvChange('${o.id}',this)">${opts}</select></td>
+      <td class="c"><input type="checkbox" ${o.deliveryConfirmed?'checked':''} onchange="onFieldToggle('${o.id}','deliveryConfirmed',this.checked)"></td>
+      <td><input value="${(o.returnNote||'').replace(/"/g,'&quot;')}" placeholder="—" style="border:1px solid var(--line);border-radius:6px" onchange="onReturnNote('${o.id}',this.value)"></td>
+      <td class="c"><input type="checkbox" ${o.settleConfirmed?'checked':''} onchange="onFieldToggle('${o.id}','settleConfirmed',this.checked)"></td>
+      <td class="c" style="white-space:nowrap">
+        <button class="btn ghost sm" onclick="openEditModal('${o.id}')">수정</button>
+        <button class="btn gray sm" onclick="deleteOrder('${o.id}')">삭제</button></td>`;
+    tb.appendChild(tr);
+  });
+}
+
+// 인라인 토글/변경
+async function onInvChange(id, el){
+  const v=el.value;
+  const patch={ inventoryStatus:v };
+  if(v==='납품'){ patch.status=1; patch.deliveredDate=today(); }  // 납품 → 주문확정 승격
+  el.className='iv-sel '+invCls(v);
+  await withLoading('저장 중...', ()=>updateOrderAPI(id, patch));
+  renderGrid();
+}
+async function onFieldToggle(id, field, val){
+  const patch={}; patch[field]=val;
+  await withLoading('저장 중...', ()=>updateOrderAPI(id, patch));
+  _cache.orders=null; // 다음 렌더 반영
+}
+async function onReturnNote(id, val){
+  await withLoading('저장 중...', ()=>updateOrderAPI(id, { returnNote:val, returnStatus: val.trim()?'처리':'' }));
+}
+async function deleteOrder(id){
+  if(!confirm('이 건을 삭제하겠습니까?')) return;
+  await withLoading('삭제 중...', ()=>deleteOrderAPI(id));
+  renderGrid();
+}
+
+// ──────────── 수정 모달 ────────────
+let modalId=null, modalRows=[];
+async function openEditModal(id){
+  let orders; try{ orders=await getOrders(); }catch(_){ return; }
+  const o=orders.find(x=>x.id===id); if(!o) return;
+  modalId=id; modalRows=JSON.parse(JSON.stringify(o.items||[]));
+  let clients=[]; try{ clients=await getClients(); }catch(_){}
+  const cOpts=clients.slice().sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''),'ko'))
+    .map(c=>`<option value="${c.id}" ${String(c.id)===String(o.clientId)?'selected':''}>${c.name}</option>`).join('');
+  const inv=o.inventoryStatus||'재고확인중';
+  const invOpts=INV_LIST.map(v=>`<option value="${v}" ${v===inv?'selected':''}>${v}</option>`).join('');
+  document.getElementById('em-title').textContent='건 상세 — '+id;
+  document.getElementById('em-body').innerHTML=`
+    <div class="grid g3" style="margin-bottom:12px">
+      <div><label>견적번호</label><input id="em-id" value="${o.id}" readonly style="background:#f0f3f7;color:var(--muted)"></div>
+      <div><label>의뢰일</label><input id="em-date" type="date" value="${o.date||''}"></div>
+      <div><label>담당자</label><input id="em-manager" value="${o.manager||''}"></div>
+    </div>
+    <div class="grid g2" style="margin-bottom:12px">
+      <div><label>납품처(거래처)</label><select id="em-client">${cOpts}</select></div>
+      <div><label>재고확보 상태</label><select id="em-inv">${invOpts}</select></div>
+    </div>
+    <div class="grid g4" style="margin-bottom:12px">
+      <div><label>차량번호</label><input id="em-plate" value="${o.plate||''}"></div>
+      <div><label>브랜드</label><input id="em-brand" list="brand-list" autocomplete="off" value="${o.brand||''}"></div>
+      <div><label>차종</label><input id="em-model" value="${o.model||''}"></div>
+      <div><label>차대번호</label><input id="em-vin" value="${o.vin||''}"></div>
+    </div>
+    <table style="margin-bottom:8px">
+      <thead><tr><th style="width:36px">No</th><th>품명</th><th style="width:60px">수량</th>
+        <th style="width:120px">납품단가</th><th style="width:120px">총납품가</th><th style="width:96px">순서/삭제</th></tr></thead>
+      <tbody id="em-rows"></tbody>
+    </table>
+    <button class="btn ghost sm" onclick="addModalRow()">＋ 행 추가</button>
+    <div class="totals" style="margin-top:12px">
+      <table><tr><td>공급가액</td><td id="em-sub">0원</td></tr>
+        <tr><td>부가세</td><td id="em-vat">0원</td></tr>
+        <tr class="fin"><td>합계</td><td id="em-tot">0원</td></tr></table>
+    </div>
+    <div class="grid g3" style="margin-top:14px">
+      <div><label>배송확인</label><select id="em-delivery"><option value="0" ${!o.deliveryConfirmed?'selected':''}>미확인</option><option value="1" ${o.deliveryConfirmed?'selected':''}>확인</option></select></div>
+      <div><label>결재확인</label><select id="em-settle"><option value="0" ${!o.settleConfirmed?'selected':''}>미확인</option><option value="1" ${o.settleConfirmed?'selected':''}>확인</option></select></div>
+      <div><label>반품/회수 메모</label><input id="em-return" value="${(o.returnNote||'').replace(/"/g,'&quot;')}" placeholder="예) 교환 라이트 2개"></div>
+    </div>
+    <div style="margin-top:12px"><label>특이사항</label><textarea id="em-note" rows="2">${o.note||''}</textarea></div>`;
+  renderModalRows();
+  document.getElementById('edit-modal').classList.add('open');
+}
+function renderModalRows(){
+  const tb=document.getElementById('em-rows'); if(!tb) return; tb.innerHTML='';
+  modalRows.forEach((r,i)=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`
+      <td class="c">${i+1}</td>
+      <td><input value="${(r.name||'').replace(/"/g,'&quot;')}" list="parts-list" oninput="modalRows[${i}].name=this.value"></td>
+      <td><input class="num" type="number" min="1" value="${r.qty||1}" oninput="modalRows[${i}].qty=+this.value||1;calcModalTotals()"></td>
+      <td><input class="num" inputmode="numeric" value="${r.price?fmtN(r.price):''}" placeholder="0" oninput="onModalPriceInput(this,${i})"></td>
+      <td class="r" id="mr-${i}">${fmt((r.qty||1)*(r.price||0))}</td>
+      <td class="c" style="white-space:nowrap">
+        <button class="btn gray sm" onclick="moveModalRow(${i},-1)">▲</button>
+        <button class="btn gray sm" onclick="moveModalRow(${i},1)">▼</button>
+        <button class="btn gray sm" onclick="removeModalRow(${i})">✕</button></td>`;
+    tb.appendChild(tr);
+  });
+  calcModalTotals();
+}
+function addModalRow(){ modalRows.push({name:'',qty:1,price:0}); renderModalRows(); }
+function removeModalRow(i){ modalRows.splice(i,1); renderModalRows(); }
+function moveModalRow(i,dir){ const j=i+dir; if(j<0||j>=modalRows.length) return; [modalRows[i],modalRows[j]]=[modalRows[j],modalRows[i]]; renderModalRows(); }
+function onModalPriceInput(el,i){ const d=el.value.replace(/[^0-9]/g,''); const n=d?parseInt(d,10):0; modalRows[i].price=n; el.value=d?n.toLocaleString('ko-KR'):''; calcModalTotals(); }
+function calcModalTotals(){
+  let sub=0;
+  modalRows.forEach((r,i)=>{ const t=(r.qty||1)*(r.price||0); sub+=t; const el=document.getElementById('mr-'+i); if(el) el.textContent=fmt(t); });
+  const vat=Math.round(sub*.1);
+  setText('em-sub',fmt(sub)); setText('em-vat',fmt(vat)); setText('em-tot',fmt(sub+vat));
+}
+async function saveEditModal(){
+  let orders; try{ orders=await getOrders(); }catch(_){ return; }
+  const o=orders.find(x=>x.id===modalId); if(!o) return;
+  let clients=[]; try{ clients=await getClients(); }catch(_){}
+  const cid=document.getElementById('em-client').value;
+  const c=clients.find(x=>String(x.id)===String(cid))||{name:'',addr:''};
+  const cleanRows=modalRows.filter(r=>r.name);
+  const sub=cleanRows.reduce((a,r)=>a+(r.qty||1)*(r.price||0),0);
+  const vat=Math.round(sub*.1);
+  const inv=document.getElementById('em-inv').value;
+  const delivered = document.getElementById('em-delivery').value==='1';
+  const settle = document.getElementById('em-settle').value==='1';
+  const returnNote=document.getElementById('em-return').value;
+  const updated=Object.assign({}, o, {
+    date:document.getElementById('em-date').value,
+    manager:document.getElementById('em-manager').value,
+    status: inv==='납품'?1:(o.status||0),
+    clientId:cid, clientName:c.name, clientAddr:c.addr||'',
+    plate:document.getElementById('em-plate').value,
+    vin:document.getElementById('em-vin').value,
+    brand:document.getElementById('em-brand').value,
+    model:document.getElementById('em-model').value,
+    items:JSON.parse(JSON.stringify(cleanRows)),
+    sub, vat, total:sub+vat,
+    note:document.getElementById('em-note').value,
+    inventoryStatus:inv,
+    deliveredDate: inv==='납품' ? (o.deliveredDate||today()) : o.deliveredDate,
+    deliveryConfirmed:delivered,
+    settleConfirmed:settle,
+    returnNote, returnStatus: returnNote.trim()?'처리':''
+  });
+  await withLoading('저장 중...', ()=>saveOrderAPI(updated));
+  closeEditModal(); renderGrid();
+}
+async function deleteFromModal(){ const id=modalId; closeEditModal(); await deleteOrder(id); }
+function closeEditModal(){ document.getElementById('edit-modal').classList.remove('open'); modalId=null; modalRows=[]; }
+
+// ──────────── 유틸 ────────────
+function today(){ return new Date().toLocaleDateString('sv-SE',{timeZone:'Asia/Seoul'}); }
+function fmtDate(d){
+  if(!d) return ''; const s=String(d);
+  if(/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  const dt=new Date(s); if(isNaN(dt.getTime())) return s.slice(0,10);
+  return dt.toLocaleDateString('sv-SE',{timeZone:'Asia/Seoul'});
+}
+function fmt(n){ return Number(n||0).toLocaleString('ko-KR')+'원'; }
+function fmtN(n){ return Number(n||0).toLocaleString('ko-KR'); }
+function setText(id,v){ const el=document.getElementById(id); if(el) el.textContent=v; }
+function fmtBiz(v){ const d=String(v).replace(/[^0-9]/g,'').slice(0,10); if(d.length<4) return d; if(d.length<6) return d.slice(0,3)+'-'+d.slice(3); return d.slice(0,3)+'-'+d.slice(3,5)+'-'+d.slice(5); }
+function fmtPhone(v){ const d=String(v).replace(/[^0-9]/g,'').slice(0,11);
+  if(d.startsWith('02')){ if(d.length<3) return d; if(d.length<6) return d.slice(0,2)+'-'+d.slice(2); if(d.length<10) return d.slice(0,2)+'-'+d.slice(2,5)+'-'+d.slice(5); return d.slice(0,2)+'-'+d.slice(2,6)+'-'+d.slice(6,10); }
+  if(d.length<4) return d; if(d.length<8) return d.slice(0,3)+'-'+d.slice(3); if(d.length<11) return d.slice(0,3)+'-'+d.slice(3,6)+'-'+d.slice(6); return d.slice(0,3)+'-'+d.slice(3,7)+'-'+d.slice(7); }
+
+document.addEventListener('keydown',e=>{
+  if(e.key!=='Escape') return;
+  if(document.getElementById('edit-modal').classList.contains('open')) closeEditModal();
+  else if(document.getElementById('client-modal').classList.contains('open')) closeClientModal();
+});
+
+// ──────────── 로그인 ────────────
+async function doLogin(){
+  const id=document.getElementById('login-id').value.trim();
+  const pw=document.getElementById('login-pw').value;
+  const err=document.getElementById('lock-err'); err.textContent='';
+  if(!id||!pw){ err.textContent='아이디와 비밀번호를 입력하세요.'; return; }
+  const email=id.includes('@')?id:id+LOGIN_DOMAIN;
+  const { error }=await sb.auth.signInWithPassword({ email, password:pw });
+  if(error){ err.textContent='로그인 실패 — 아이디 또는 비밀번호를 확인하세요.'; return; }
+  document.getElementById('lock-screen').style.display='none';
+  await startApp();
+}
+async function doLogout(){ await sb.auth.signOut(); location.reload(); }
+function showWho(email){ const el=document.getElementById('who'); if(el) el.textContent=(email||'').replace(LOGIN_DOMAIN,''); }
+
+async function startApp(){
+  try{ const { data:{ user } }=await sb.auth.getUser(); showWho((user&&user.email)||''); }catch(_){}
+  await withLoading('데이터 불러오는 중...', async()=>{ await Promise.all([getOrders(), getClients()]); });
+  await buildPartsDatalist();
+  await initForm();
+  renderGrid();
+}
+(async()=>{
+  const { data:{ session } }=await sb.auth.getSession();
+  if(session){ document.getElementById('lock-screen').style.display='none'; startApp(); }
+  else document.getElementById('login-id').focus();
+})();
+</script>
+</body>
+</html>
