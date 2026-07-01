@@ -291,7 +291,7 @@
     <table>
       <thead>
         <tr><th>견적번호</th><th>일자</th><th>거래처</th><th>차량번호</th>
-        <th>차종</th><th class="r">합계(VAT포함)</th><th>상태</th><th class="noprint">관리</th></tr>
+        <th>차종</th><th class="r">합계(VAT포함)</th><th>재고확보</th><th>상태</th><th class="noprint">관리</th></tr>
       </thead>
       <tbody id="list-body"></tbody>
     </table>
@@ -529,6 +529,14 @@ const STATUSES = ['견적요청','주문확정'];
 function statusIdx(s){ s=parseInt(s)||0; return s>1?1:s; }
 function statusLabel(s){ return STATUSES[statusIdx(s)]; }
 function statusCls(s){ return 's'+statusIdx(s); }
+// 실무자 페이지에서 설정한 재고확보 상태 배지 (읽기 전용 표시)
+function invBadge(o){
+  const v=(o&&o.inventoryStatus)||'';
+  if(!v) return '<span style="color:#aab">—</span>';
+  const COL={'재고확인중':['#7c3aed','#f3e8ff'],'확인':['#b7791f','#fff8e1'],'재고없음':['#d64545','#fdecec'],'납품':['#1f9d6b','#eafaf2']};
+  const c=COL[v]||['#555','#eef1f5'];
+  return `<span style="color:${c[0]};background:${c[1]};font-weight:700;padding:3px 9px;border-radius:10px;font-size:11px;white-space:nowrap">${v}</span>`;
+}
 const SUPPLIER = {
   name:'주식회사 위페어', biz:'178-88-03012',
   addr:'서울특별시 관악구 호암로22길 32, 5층 502호',
@@ -810,6 +818,7 @@ async function renderList(){
       <td>${o.clientName||''}</td><td class="c">${o.plate||''}</td>
       <td>${o.model||o.brand||''}</td>
       <td class="r">${fmt(o.total||0)}</td>
+      <td class="c">${invBadge(o)}</td>
       <td class="c"><span class="${statusCls(o.status)}">${statusLabel(o.status)}</span></td>
       <td class="c noprint" style="white-space:nowrap">
         <button class="btn ghost sm" onclick="event.stopPropagation();openEditModal('${o.id}')">수정</button>
