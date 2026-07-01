@@ -60,6 +60,12 @@
   /* Search bar */
   .search-bar{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;align-items:flex-end}
   .search-bar .sf{flex:1;min-width:130px}
+  /* 대장: 세로 스크롤 + 헤더 고정 + 한 줄 유지 */
+  .grid-scroll{max-height:62vh;overflow:auto}
+  .grid-scroll thead th{position:sticky;top:0;z-index:3}
+  #grid-body td{white-space:nowrap}
+  #grid-body td.cell-client{max-width:150px;overflow:hidden;text-overflow:ellipsis}
+  #grid-count{font-size:13px;color:var(--navy);font-weight:700;margin:2px 0 10px}
   /* Modal */
   .modal-bg{display:none;position:fixed;inset:0;background:#0006;z-index:1000;align-items:center;justify-content:center}
   .modal-bg.open{display:flex}
@@ -131,18 +137,24 @@
     </div>
   </div>
   <div class="grid g4" style="margin-bottom:12px">
-    <div><label>납품처 (거래처)</label>
+    <div style="grid-column:span 3"><label>납품처 (거래처)</label>
       <select id="o-client" onchange="onClientSelect()"><option value="">— 선택 —</option></select>
     </div>
     <div style="display:flex;align-items:flex-end"><button class="btn ghost sm" onclick="openClientModal()">＋ 새 거래처</button></div>
-    <div><label>차량번호</label><input id="o-plate" placeholder="예) 280다6079"></div>
-    <div><label>차대번호 (선택)</label><input id="o-vin" placeholder="선택 입력"></div>
   </div>
-  <div class="grid g2" style="margin-bottom:4px">
-    <div><label>브랜드</label>
-      <input id="o-brand" list="brand-list" placeholder="예) 벤츠" autocomplete="off">
-    </div>
-    <div><label>차량정보 (차종)</label><input id="o-model" placeholder="예) W214"></div>
+  <div class="grid g3" style="margin-bottom:12px">
+    <div><label>① 차량번호</label>
+      <input id="o-plate" placeholder="예) 280다6079"
+        onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('o-brand').focus();}"></div>
+    <div><label>② 브랜드</label>
+      <input id="o-brand" list="brand-list" placeholder="예) 벤츠" autocomplete="off"
+        onkeydown="if(event.key==='Enter'&&!event.isComposing&&event.keyCode!==229){event.preventDefault();document.getElementById('o-model').focus();}"></div>
+    <div><label>③ 차종</label>
+      <input id="o-model" placeholder="예) W214"
+        onkeydown="if(event.key==='Enter'&&!event.isComposing&&event.keyCode!==229){event.preventDefault();const f=document.querySelector('#items-body input');if(f)f.focus();}"></div>
+  </div>
+  <div class="grid g4" style="margin-bottom:4px">
+    <div><label>차대번호 (선택 · 간혹 기재)</label><input id="o-vin" placeholder="선택 입력"></div>
   </div>
 
   <div style="margin-top:16px">
@@ -180,6 +192,7 @@
 <div class="search-bar">
   <div class="sf"><label>거래처</label><input id="f-client" placeholder="검색" oninput="renderGrid()"></div>
   <div class="sf"><label>차량번호</label><input id="f-plate" placeholder="검색" oninput="renderGrid()"></div>
+  <div class="sf"><label>차명/차종</label><input id="f-car" placeholder="예) BMW, W214" oninput="renderGrid()"></div>
   <div class="sf"><label>재고확보 상태</label>
     <select id="f-inv" onchange="renderGrid()">
       <option value="">전체</option>
@@ -194,18 +207,21 @@
   <button class="btn sm ghost" onclick="clearFilters()">초기화</button>
 </div>
 
-<div class="card" style="padding:0;overflow-x:auto">
-  <table>
-    <thead>
-      <tr>
-        <th>의뢰일</th><th>거래처</th><th>차량번호</th><th>차명</th><th>주요 부품</th>
-        <th class="r">합계(VAT)</th><th style="width:120px">재고확보</th>
-        <th style="width:64px">배송<br>확인</th><th style="width:150px">반품/회수</th>
-        <th style="width:64px">결재<br>확인</th><th style="width:110px">관리</th>
-      </tr>
-    </thead>
-    <tbody id="grid-body"></tbody>
-  </table>
+<div id="grid-count"></div>
+<div class="card" style="padding:0">
+  <div class="grid-scroll">
+    <table>
+      <thead>
+        <tr>
+          <th>의뢰일</th><th>거래처</th><th>차량번호</th><th>차명</th><th>주요 부품</th>
+          <th class="r">합계(VAT)</th><th style="width:120px">재고확보</th>
+          <th style="width:64px">배송<br>확인</th><th style="width:150px">반품/회수</th>
+          <th style="width:64px">결재<br>확인</th><th style="width:110px">관리</th>
+        </tr>
+      </thead>
+      <tbody id="grid-body"></tbody>
+    </table>
+  </div>
   <div id="grid-empty" class="empty" style="display:none">등록된 건이 없습니다.</div>
 </div>
 
@@ -437,12 +453,13 @@ function partsSummary(o){
   const s=names.join(', ');
   return s.length>28 ? s.slice(0,28)+'…' : (s||'—');
 }
-function clearFilters(){ ['f-client','f-plate','f-from','f-to'].forEach(id=>document.getElementById(id).value=''); document.getElementById('f-inv').value=''; renderGrid(); }
+function clearFilters(){ ['f-client','f-plate','f-car','f-from','f-to'].forEach(id=>document.getElementById(id).value=''); document.getElementById('f-inv').value=''; renderGrid(); }
 
 async function renderGrid(){
   let all; try{ all=await getOrders(); }catch(_){ return; }
   const fC=(document.getElementById('f-client').value||'').toLowerCase();
   const fP=(document.getElementById('f-plate').value||'').toLowerCase();
+  const fCar=(document.getElementById('f-car').value||'').toLowerCase();
   const fI=document.getElementById('f-inv').value;
   const fF=document.getElementById('f-from').value;
   const fT=document.getElementById('f-to').value;
@@ -450,11 +467,13 @@ async function renderGrid(){
   const list=all.filter(o=>{
     if(fC && !(o.clientName||'').toLowerCase().includes(fC)) return false;
     if(fP && !(o.plate||'').toLowerCase().includes(fP)) return false;
+    if(fCar && !(((o.brand||'')+' '+(o.model||'')).toLowerCase().includes(fCar))) return false;
     if(fI && (o.inventoryStatus||'재고확인중')!==fI) return false;
     if(fF && o.date<fF) return false;
     if(fT && o.date>fT) return false;
     return true;
   }).sort((a,b)=>String(b.date).localeCompare(String(a.date))||String(b.id).localeCompare(String(a.id)));
+  setText('grid-count', `조회 ${list.length}건 (전체 ${all.length}건)`);
 
   // KPI
   const cnt={전체:all.length,재고확인중:0,확인:0,재고없음:0,납품:0};
@@ -477,7 +496,7 @@ async function renderGrid(){
     const tr=document.createElement('tr');
     tr.innerHTML=`
       <td class="c">${o.date||''}</td>
-      <td>${o.clientName||''}</td>
+      <td class="cell-client" title="${(o.clientName||'').replace(/"/g,'&quot;')}">${o.clientName||''}</td>
       <td class="c">${o.plate||''}</td>
       <td>${car}</td>
       <td title="${(o.items||[]).map(r=>r.name).filter(Boolean).join(', ')}">${partsSummary(o)}</td>
