@@ -1498,8 +1498,12 @@ async function saveClientEdit(){
 
 // ──────────── 부위(품명) 관리 — 공통 목록, 추가·삭제는 관리자만 ────────────
 const ADMIN_IDS = ['wepair'];   // 부위 추가·삭제 가능한 관리자 아이디
+// ▼ 실무자 전용 계정 아이디: 운영툴(이 페이지) 접근을 막고 실무 입력 페이지로 보냄.
+//    실무자 계정을 새로 만들 때마다 여기에 아이디를 추가하세요. 예: ['leo','parts01']
+const PRACTITIONER_IDS = [];
 let _userEmail = '';
 function isAdmin(){ return ADMIN_IDS.includes((_userEmail||'').replace(LOGIN_DOMAIN,'').toLowerCase()); }
+function isPractitioner(){ return PRACTITIONER_IDS.includes((_userEmail||'').replace(LOGIN_DOMAIN,'').toLowerCase()); }
 
 async function buildPartsDatalist(){
   let parts=[]; try { parts = await getParts(); } catch(_){ return; }
@@ -1657,6 +1661,8 @@ async function startApp() {
     return;
   }
   try { const { data:{ user } } = await sb.auth.getUser(); _userEmail = (user && user.email) || ''; showWho(_userEmail); } catch(_){}
+  // 실무자 계정이면 운영툴 접근 차단 → 실무 입력 페이지로 이동
+  if(isPractitioner()){ alert('실무자 계정은 운영툴에 접근할 수 없습니다. 실무 입력 페이지로 이동합니다.'); location.replace('practitioner.html'); return; }
   const partsBtn = document.querySelector('nav button[data-tab="parts"]');
   if(partsBtn) partsBtn.style.display = isAdmin() ? '' : 'none';   // 부위 관리는 관리자만 노출
   await withLoading('데이터 불러오는 중...', async () => {

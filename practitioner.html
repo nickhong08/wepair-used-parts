@@ -14,7 +14,7 @@
   header .spacer{flex:1}
   header a.tool-link{font-size:12px;color:#cfd7e2;text-decoration:none;background:#ffffff1a;padding:6px 12px;border-radius:8px}
   header a.tool-link:hover{background:#ffffff33}
-  main{padding:22px;max-width:1320px;margin:0 auto}
+  main{padding:22px;max-width:1640px;margin:0 auto}
   .card{background:#fff;border:1px solid var(--line);border-radius:10px;padding:20px;margin-bottom:18px}
   .card h2{margin:0 0 14px;font-size:15px;color:var(--navy);display:flex;align-items:center;gap:8px}
   .card h2 .hint{font-weight:500;font-size:12px;color:var(--muted)}
@@ -60,11 +60,13 @@
   /* Search bar */
   .search-bar{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;align-items:flex-end}
   .search-bar .sf{flex:1;min-width:130px}
-  /* 대장: 세로 스크롤 + 헤더 고정 + 한 줄 유지 */
-  .grid-scroll{max-height:62vh;overflow:auto}
-  .grid-scroll thead th{position:sticky;top:0;z-index:3}
+  /* 대장: 화면을 꽉 채우는 세로 스크롤 + 컬럼헤더 상단 고정 */
+  .grid-scroll{max-height:calc(100vh - 170px);min-height:480px;overflow:auto;position:relative}
+  .grid-scroll thead th{position:sticky;top:0;z-index:5;background:#eef2f7;box-shadow:inset 0 -1px 0 var(--line),inset 0 1px 0 var(--line)}
+  /* 기본은 한 줄 유지(잘림 없이 전체 표시) */
   #grid-body td{white-space:nowrap}
-  #grid-body td.cell-client{max-width:150px;overflow:hidden;text-overflow:ellipsis}
+  /* 주요부품만 잘라내지 않고 자연스럽게 줄바꿈 */
+  #grid-body td.cell-parts{white-space:normal;word-break:keep-all;min-width:230px;max-width:340px}
   #grid-count{font-size:13px;color:var(--navy);font-weight:700;margin:2px 0 10px}
   /* Modal */
   .modal-bg{display:none;position:fixed;inset:0;background:#0006;z-index:1000;align-items:center;justify-content:center}
@@ -113,7 +115,6 @@
   <h1>위페어 중고부품 · 실무 입력</h1>
   <span class="tag">재고·납품·청구 관리</span>
   <span class="spacer"></span>
-  <a class="tool-link" href="index.html">운영툴 →</a>
   <span id="who" style="font-size:12px;color:#cfd7e2"></span>
   <button onclick="doLogout()" style="background:#ffffff1a;color:#e8edf3;border:none;padding:6px 12px;border-radius:8px;cursor:pointer;font-size:12px">로그아웃</button>
 </header>
@@ -496,10 +497,10 @@ async function renderGrid(){
     const tr=document.createElement('tr');
     tr.innerHTML=`
       <td class="c">${o.date||''}</td>
-      <td class="cell-client" title="${(o.clientName||'').replace(/"/g,'&quot;')}">${o.clientName||''}</td>
+      <td>${o.clientName||''}</td>
       <td class="c">${o.plate||''}</td>
       <td>${car}</td>
-      <td title="${(o.items||[]).map(r=>r.name).filter(Boolean).join(', ')}">${partsSummary(o)}</td>
+      <td class="cell-parts">${(o.items||[]).map(r=>r.name).filter(Boolean).join(', ')||'—'}</td>
       <td class="r">${fmt(o.total||0)}</td>
       <td class="c"><select class="iv-sel ${invCls(inv)}" onchange="onInvChange('${o.id}',this)">${opts}</select></td>
       <td class="c"><input type="checkbox" ${o.deliveryConfirmed?'checked':''} onchange="onFieldToggle('${o.id}','deliveryConfirmed',this.checked)"></td>
