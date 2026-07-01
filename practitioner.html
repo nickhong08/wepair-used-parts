@@ -88,6 +88,14 @@
   .modal-b{padding:20px}
   .modal-f{padding:14px 20px;display:flex;justify-content:flex-end;gap:8px;border-top:1px solid var(--line)}
   input[type=checkbox]{width:auto;accent-color:var(--blue);transform:scale(1.2)}
+  /* 배송 증빙 사진 */
+  .dropzone{border:2px dashed var(--line);border-radius:8px;padding:18px;text-align:center;color:var(--muted);font-size:13px;cursor:pointer;background:#fafbfc;transition:.15s}
+  .dropzone.drag{border-color:var(--blue);background:#eef4ff;color:var(--blue)}
+  .photo-list{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px}
+  .photo-thumb{position:relative;width:92px;height:92px;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:#f0f3f7}
+  .photo-thumb img{width:100%;height:100%;object-fit:cover;cursor:pointer;display:block}
+  .photo-del{position:absolute;top:2px;right:2px;background:#000a;color:#fff;border:none;border-radius:50%;width:20px;height:20px;cursor:pointer;font-size:11px;line-height:1}
+  .photo-cnt{font-size:10px;color:var(--ok);font-weight:700;margin-top:2px}
   /* 로딩 */
   #loading-overlay{display:none;position:fixed;inset:0;background:#0006;z-index:9999;align-items:center;justify-content:center;flex-direction:column;gap:12px;color:#fff}
   @keyframes spin{to{transform:rotate(360deg)}}
@@ -572,7 +580,7 @@ async function renderGrid(){
       <td class="cell-parts">${(o.items||[]).map(r=>r.name).filter(Boolean).join(', ')||'—'}</td>
       <td class="r">${fmt(o.total||0)}</td>
       <td class="c"><select class="iv-sel ${invCls(inv)}" onchange="onInvChange('${o.id}',this)">${opts}</select></td>
-      <td class="c"><input type="checkbox" ${o.deliveryConfirmed?'checked':''} onchange="onFieldToggle('${o.id}','deliveryConfirmed',this.checked)"></td>
+      <td class="c"><input type="checkbox" ${o.deliveryConfirmed?'checked':''} onchange="onFieldToggle('${o.id}','deliveryConfirmed',this.checked)">${(o.photos&&o.photos.length)?`<div class="photo-cnt">📷${o.photos.length}</div>`:''}</td>
       <td><input value="${(o.returnNote||'').replace(/"/g,'&quot;')}" placeholder="—" style="border:1px solid var(--line);border-radius:6px" onchange="onReturnNote('${o.id}',this.value)"></td>
       <td class="c"><input type="checkbox" ${o.settleConfirmed?'checked':''} onchange="onFieldToggle('${o.id}','settleConfirmed',this.checked)"></td>
       <td class="c" style="white-space:nowrap">
@@ -651,9 +659,99 @@ async function openEditModal(id){
       <div><label>결재확인</label><select id="em-settle"><option value="0" ${!o.settleConfirmed?'selected':''}>미확인</option><option value="1" ${o.settleConfirmed?'selected':''}>확인</option></select></div>
       <div><label>반품/회수 메모</label><input id="em-return" value="${(o.returnNote||'').replace(/"/g,'&quot;')}" placeholder="예) 교환 라이트 2개"></div>
     </div>
-    <div style="margin-top:12px"><label>특이사항</label><textarea id="em-note" rows="2">${o.note||''}</textarea></div>`;
+    <div style="margin-top:12px"><label>특이사항</label><textarea id="em-note" rows="2">${o.note||''}</textarea></div>
+    <div style="margin-top:14px">
+      <label>배송 증빙 사진 <span style="font-weight:400;color:var(--muted)">— 끌어다 놓거나 클릭/촬영해 업로드(여러 장 가능). 사진을 올리면 배송확인이 자동 체크됩니다.</span></label>
+      <div id="em-dropzone" class="dropzone">
+        <input id="em-file" type="file" accept="image/*" multiple style="display:none">
+        📷 사진을 여기로 끌어다 놓거나 <b>클릭 / 촬영</b>
+      </div>
+      <div id="em-photo-list" class="photo-list"></div>
+    </div>`;
   renderModalRows();
+  modalPhotos = JSON.parse(JSON.stringify(o.photos||[]));
+  renderModalPhotos();
+  wirePhotoDropzone();
   document.getElementById('edit-modal').classList.add('open');
+}
+
+// ── 배송 증빙 사진 (구글 드라이브 · Apps Script 중계) ──
+// ▼ Apps Script 웹앱 배포 후 아래 두 값을 채우세요. (appscript_배송사진_업로드.gs 참고)
+const GAS_UPLOAD_URL = 'https://script.google.com/macros/s/AKfycbyGBDhKMkB9MGRFe02KK8k0VS9Qxtb8-6uxMxZQMoG6sx6N6Z6ynz6BKvo6zQWkknUE/exec';
+const GAS_TOKEN      = 'wepair-eco-9x7Qm2Kd';   // Code.gs 의 TOKEN 과 동일
+let modalPhotos=[];
+
+function compressImage(file, maxW=1600, quality=0.72){
+  return new Promise((resolve,reject)=>{
+    const url=URL.createObjectURL(file); const img=new Image();
+    img.onload=()=>{ URL.revokeObjectURL(url);
+      let w=img.width,h=img.height;
+      if(w>maxW||h>maxW){ const r=Math.min(maxW/w,maxW/h); w=Math.round(w*r); h=Math.round(h*r); }
+      const c=document.createElement('canvas'); c.width=w; c.height=h;
+      c.getContext('2d').drawImage(img,0,0,w,h);
+      c.toBlob(b=> b?resolve(b):reject(new Error('압축 실패')), 'image/jpeg', quality);
+    };
+    img.onerror=()=>{ URL.revokeObjectURL(url); reject(new Error('이미지 로드 실패')); };
+    img.src=url;
+  });
+}
+function blobToBase64(blob){
+  return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(String(r.result).split(',')[1]); r.onerror=rej; r.readAsDataURL(blob); });
+}
+// Apps Script 웹앱 호출 (CORS 회피: text/plain 단순요청)
+async function gasCall(payload){
+  if(!GAS_UPLOAD_URL){ throw new Error('업로드 서버(GAS_UPLOAD_URL)가 설정되지 않았습니다. practitioner.html 상단을 확인하세요.'); }
+  const res=await fetch(GAS_UPLOAD_URL,{ method:'POST', redirect:'follow',
+    headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body:JSON.stringify(Object.assign({token:GAS_TOKEN}, payload)) });
+  let data; try{ data=await res.json(); }catch(_){ throw new Error('서버 응답을 읽지 못했습니다(CORS/배포 설정 확인 필요).'); }
+  if(data.error) throw new Error(data.error);
+  return data;
+}
+function wirePhotoDropzone(){
+  const dz=document.getElementById('em-dropzone'), fi=document.getElementById('em-file'); if(!dz||!fi) return;
+  dz.onclick=()=>fi.click();
+  fi.onchange=()=>{ if(fi.files.length) uploadModalPhotos([...fi.files]); fi.value=''; };
+  dz.ondragover=(e)=>{ e.preventDefault(); dz.classList.add('drag'); };
+  dz.ondragleave=()=>dz.classList.remove('drag');
+  dz.ondrop=(e)=>{ e.preventDefault(); dz.classList.remove('drag'); const fs=[...(e.dataTransfer.files||[])]; if(fs.length) uploadModalPhotos(fs); };
+}
+async function uploadModalPhotos(files){
+  if(!modalId) return;
+  await withLoading('사진 업로드 중...', async()=>{
+    for(const f of files){
+      const isImg = (f.type||'').startsWith('image/') || /\.(heic|heif)$/i.test(f.name);
+      if(!isImg) continue;
+      let blob, mime='image/jpeg', name=(f.name||'photo.jpg');
+      try{ blob=await compressImage(f); name=name.replace(/\.\w+$/,'')+'.jpg'; }  // 압축 성공 → JPEG(HEIC도 변환됨)
+      catch(_){ blob=f; mime=f.type||'application/octet-stream'; }                 // 실패 → 원본 그대로
+      const b64=await blobToBase64(blob);
+      const r=await gasCall({ action:'upload', orderId:modalId, filename:name, mimeType:mime, dataBase64:b64 });
+      modalPhotos.push({ fileId:r.fileId, viewUrl:r.viewUrl, thumbUrl:r.thumbUrl, name:name, at:today() });
+    }
+    await updateOrderAPI(modalId, { photos:modalPhotos, deliveryConfirmed:true });
+  });
+  const dsel=document.getElementById('em-delivery'); if(dsel) dsel.value='1';   // 배송확인 자동 체크
+  await renderModalPhotos(); renderGrid();
+}
+async function renderModalPhotos(){
+  const wrap=document.getElementById('em-photo-list'); if(!wrap) return;
+  if(!modalPhotos.length){ wrap.innerHTML='<span style="color:var(--muted);font-size:12px">업로드된 사진이 없습니다.</span>'; return; }
+  wrap.innerHTML=modalPhotos.map((p,i)=>`
+    <div class="photo-thumb">
+      <img src="${p.thumbUrl||''}" referrerpolicy="no-referrer" onclick="window.open('${(p.viewUrl||p.thumbUrl||'')}','_blank')" title="${(p.name||'').replace(/"/g,'&quot;')}">
+      <button class="photo-del" title="삭제" onclick="deleteModalPhoto(${i})">✕</button>
+    </div>`).join('');
+}
+async function deleteModalPhoto(i){
+  const p=modalPhotos[i]; if(!p) return;
+  if(!confirm('이 사진을 삭제할까요?')) return;
+  await withLoading('삭제 중...', async()=>{
+    try{ await gasCall({ action:'delete', fileId:p.fileId }); }catch(_){}
+    modalPhotos.splice(i,1);
+    await updateOrderAPI(modalId, { photos:modalPhotos });
+  });
+  await renderModalPhotos(); renderGrid();
 }
 function renderModalRows(){
   const tb=document.getElementById('em-rows'); if(!tb) return; tb.innerHTML='';
@@ -712,7 +810,8 @@ async function saveEditModal(){
     deliveredDate: inv==='납품' ? (o.deliveredDate||today()) : o.deliveredDate,
     deliveryConfirmed:delivered,
     settleConfirmed:settle,
-    returnNote, returnStatus: returnNote.trim()?'처리':''
+    returnNote, returnStatus: returnNote.trim()?'처리':'',
+    photos: modalPhotos
   });
   await withLoading('저장 중...', ()=>saveOrderAPI(updated));
   closeEditModal(); renderGrid();
